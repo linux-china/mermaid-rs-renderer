@@ -586,6 +586,54 @@ fn push_priority_side_candidate_limited(
     }
 }
 
+fn collect_routed_side_candidates(
+    from: &NodeLayout,
+    to: &NodeLayout,
+    primary: (EdgeSide, EdgeSide, bool),
+    balanced: (EdgeSide, EdgeSide, bool),
+    edge_role: roles::FlowchartEdgeRole,
+    graph_direction: crate::ir::Direction,
+    content_bounds: Option<NodeBounds>,
+    limit: usize,
+) -> Vec<(EdgeSide, EdgeSide, bool)> {
+    let mut candidates = Vec::with_capacity(limit.max(1));
+    push_unique_side_candidate_limited(&mut candidates, primary, limit);
+    push_unique_side_candidate_limited(&mut candidates, balanced, limit);
+
+    let horizontal = candidate_horizontal_sides(from, to);
+    let vertical = candidate_vertical_sides(from, to);
+    let from_c = node_center(from);
+    let to_c = node_center(to);
+    if (to_c.0 - from_c.0).abs() >= (to_c.1 - from_c.1).abs() {
+        push_unique_side_candidate_limited(&mut candidates, horizontal, limit);
+        push_unique_side_candidate_limited(&mut candidates, vertical, limit);
+    } else {
+        push_unique_side_candidate_limited(&mut candidates, vertical, limit);
+        push_unique_side_candidate_limited(&mut candidates, horizontal, limit);
+    }
+    if edge_role.is_back_edge {
+        push_priority_side_candidate_limited(
+            &mut candidates,
+            choose_outer_back_edge_sides(from, to, graph_direction, content_bounds, balanced),
+            limit,
+        );
+    }
+    candidates
+}
+
+fn allow_low_degree_balancing_for_edge(
+    edge: &crate::ir::Edge,
+    edge_role: roles::FlowchartEdgeRole,
+    from_degree: usize,
+    to_degree: usize,
+) -> bool {
+    from_degree <= 4
+        && to_degree <= 4
+        && (edge.style == crate::ir::EdgeStyle::Dotted
+            || edge_role.is_back_edge
+            || edge_role.crosses_subgraph_boundary)
+}
+
 fn routed_side_candidate_score(
     from_id: &str,
     to_id: &str,
@@ -699,28 +747,16 @@ fn choose_routed_flowchart_sides(
     config: &LayoutConfig,
     profile: RoutedSideSearchProfile,
 ) -> (EdgeSide, EdgeSide, bool) {
-    let mut candidates = Vec::with_capacity(profile.max_candidates.max(1));
-    push_unique_side_candidate_limited(&mut candidates, primary, profile.max_candidates);
-    push_unique_side_candidate_limited(&mut candidates, balanced, profile.max_candidates);
-
-    let horizontal = candidate_horizontal_sides(from, to);
-    let vertical = candidate_vertical_sides(from, to);
-    let from_c = node_center(from);
-    let to_c = node_center(to);
-    if (to_c.0 - from_c.0).abs() >= (to_c.1 - from_c.1).abs() {
-        push_unique_side_candidate_limited(&mut candidates, horizontal, profile.max_candidates);
-        push_unique_side_candidate_limited(&mut candidates, vertical, profile.max_candidates);
-    } else {
-        push_unique_side_candidate_limited(&mut candidates, vertical, profile.max_candidates);
-        push_unique_side_candidate_limited(&mut candidates, horizontal, profile.max_candidates);
-    }
-    if edge_role.is_back_edge {
-        push_priority_side_candidate_limited(
-            &mut candidates,
-            choose_outer_back_edge_sides(from, to, graph_direction, content_bounds, balanced),
-            profile.max_candidates,
-        );
-    }
+    let candidates = collect_routed_side_candidates(
+        from,
+        to,
+        primary,
+        balanced,
+        edge_role,
+        graph_direction,
+        content_bounds,
+        profile.max_candidates,
+    );
 
     let scored_existing_segments = if profile.use_existing_segments {
         existing_segments
@@ -754,6 +790,530 @@ fn choose_routed_flowchart_sides(
         }
     }
     best
+}
+
+#[derive(Debug, Clone, Copy)]
+struct PortRouteScore {
+    hard: usize,
+    endpoint_reentries: usize,
+    non_endpoint_hits: usize,
+    label_hits: usize,
+    port_collisions: usize,
+    crossings: usize,
+    overlap: f32,
+    bends: usize,
+    len: f32,
+    offset_drift: f32,
+}
+
+fn port_route_score_is_better(candidate: PortRouteScore, best: PortRouteScore) -> bool {
+    if candidate.hard != best.hard {
+        return candidate.hard < best.hard;
+    }
+    if candidate.endpoint_reentries != best.endpoint_reentries {
+        return candidate.endpoint_reentries < best.endpoint_reentries;
+    }
+    if candidate.non_endpoint_hits != best.non_endpoint_hits {
+        return candidate.non_endpoint_hits < best.non_endpoint_hits;
+    }
+    if candidate.bends != best.bends {
+        return candidate.bends < best.bends;
+    }
+    if (candidate.len - best.len).abs() > 1.0 {
+        return candidate.len < best.len;
+    }
+    if (candidate.offset_drift - best.offset_drift).abs() > 0.5 {
+        return candidate.offset_drift < best.offset_drift;
+    }
+    if candidate.label_hits != best.label_hits {
+        return candidate.label_hits < best.label_hits;
+    }
+    if candidate.crossings != best.crossings {
+        return candidate.crossings < best.crossings;
+    }
+    if (candidate.overlap - best.overlap).abs() > 0.05 {
+        return candidate.overlap < best.overlap;
+    }
+    if candidate.port_collisions != best.port_collisions {
+        return candidate.port_collisions < best.port_collisions;
+    }
+    false
+}
+
+fn effective_edge_endpoint_layouts(
+    graph: &Graph,
+    nodes: &BTreeMap<String, NodeLayout>,
+    subgraphs: &[SubgraphLayout],
+    edge: &crate::ir::Edge,
+) -> Option<(NodeLayout, NodeLayout)> {
+    let from_layout = nodes.get(&edge.from)?;
+    let to_layout = nodes.get(&edge.to)?;
+    let from = from_layout
+        .anchor_subgraph
+        .and_then(|anchor_idx| {
+            subgraphs
+                .get(anchor_idx)
+                .map(|sub| anchor_layout_for_edge(from_layout, sub, graph.direction, true))
+        })
+        .unwrap_or_else(|| from_layout.clone());
+    let to = to_layout
+        .anchor_subgraph
+        .and_then(|anchor_idx| {
+            subgraphs
+                .get(anchor_idx)
+                .map(|sub| anchor_layout_for_edge(to_layout, sub, graph.direction, false))
+        })
+        .unwrap_or_else(|| to_layout.clone());
+    Some((from, to))
+}
+
+fn port_axis_center(node: &NodeLayout, side: EdgeSide) -> f32 {
+    if side_is_vertical(side) {
+        node.y + node.height / 2.0
+    } else {
+        node.x + node.width / 2.0
+    }
+}
+
+fn max_port_offset_for_side(node: &NodeLayout, side: EdgeSide) -> f32 {
+    if side_is_vertical(side) {
+        (node.height / 2.0 - 1.0).max(0.0)
+    } else {
+        (node.width / 2.0 - 1.0).max(0.0)
+    }
+}
+
+fn clamp_port_offset_for_side(node: &NodeLayout, side: EdgeSide, offset: f32) -> f32 {
+    let max_offset = max_port_offset_for_side(node, side);
+    if max_offset > 0.0 {
+        offset.clamp(-max_offset, max_offset)
+    } else {
+        0.0
+    }
+}
+
+fn ideal_offset_for_side(remote: (f32, f32), node: &NodeLayout, side: EdgeSide) -> f32 {
+    clamp_port_offset_for_side(
+        node,
+        side,
+        ideal_port_pos(remote, node, side) - port_axis_center(node, side),
+    )
+}
+
+fn push_unique_offset(candidates: &mut Vec<f32>, value: f32, limit: usize) {
+    if candidates
+        .iter()
+        .any(|existing| (*existing - value).abs() <= 0.75)
+    {
+        return;
+    }
+    if candidates.len() < limit.max(1) {
+        candidates.push(value);
+    }
+}
+
+fn port_offset_candidates(
+    node: &NodeLayout,
+    side: EdgeSide,
+    current_offset: f32,
+    remote: (f32, f32),
+    config: &LayoutConfig,
+    limit: usize,
+) -> Vec<f32> {
+    let mut offsets = Vec::with_capacity(limit.max(1));
+    let current = clamp_port_offset_for_side(node, side, current_offset);
+    let ideal = ideal_offset_for_side(remote, node, side);
+    let step = routing_cell_size(config)
+        .max(config.node_spacing * 0.18)
+        .min(max_port_offset_for_side(node, side).max(1.0));
+
+    push_unique_offset(&mut offsets, current, limit);
+    push_unique_offset(&mut offsets, ideal, limit);
+    push_unique_offset(&mut offsets, 0.0, limit);
+    if limit > 3 && step > 0.5 {
+        push_unique_offset(
+            &mut offsets,
+            clamp_port_offset_for_side(node, side, ideal + step),
+            limit,
+        );
+        push_unique_offset(
+            &mut offsets,
+            clamp_port_offset_for_side(node, side, ideal - step),
+            limit,
+        );
+    }
+    offsets
+}
+
+fn port_refinement_offset_limit(graph: &Graph, profile: RoutedSideSearchProfile) -> usize {
+    if graph.edges.len() <= 32 && profile.max_candidates >= 5 {
+        4
+    } else if graph.edges.len() <= 160 {
+        3
+    } else {
+        2
+    }
+}
+
+fn route_points_for_port_candidate(
+    graph: &Graph,
+    edge: &crate::ir::Edge,
+    from: &NodeLayout,
+    to: &NodeLayout,
+    port: EdgePortInfo,
+    base_offset: f32,
+    obstacles: &[Obstacle],
+    label_obstacles: &[Obstacle],
+    routing_grid: Option<&RoutingGrid>,
+    existing_segments: &[Segment],
+    config: &LayoutConfig,
+    profile: RoutedSideSearchProfile,
+) -> Vec<(f32, f32)> {
+    let stub_len = port_stub_length(config, from, to);
+    let route_ctx = RouteContext {
+        from_id: &edge.from,
+        to_id: &edge.to,
+        from,
+        to,
+        direction: graph.direction,
+        config,
+        obstacles,
+        label_obstacles,
+        fast_route: profile.fast_route,
+        base_offset,
+        start_side: port.start_side,
+        end_side: port.end_side,
+        start_offset: port.start_offset,
+        end_offset: port.end_offset,
+        stub_len,
+        start_inset: if edge.arrow_start {
+            crate::edge_geometry::arrowhead_inset(graph.kind, edge.arrow_start_kind)
+        } else {
+            0.0
+        },
+        end_inset: if edge.arrow_end {
+            crate::edge_geometry::arrowhead_inset(graph.kind, edge.arrow_end_kind)
+        } else {
+            0.0
+        },
+        prefer_shorter_ties: true,
+        preferred_label_id: None,
+        preferred_label_center: None,
+        preferred_label_obstacle: None,
+        preferred_label_clearance: 0.0,
+        force_preferred_label_via: false,
+        coarse_grid_retry: true,
+    };
+    let grid = profile.use_grid.then_some(routing_grid).flatten();
+    // For full port refinement, generate the candidate's natural path first and
+    // score crossings/overlap against provisional segments afterward. Feeding the
+    // provisional segments into the router here makes straight backbone edges bend
+    // just to avoid a preview-only conflict, which then defeats later straight-line
+    // cleanup and produces visibly worse ports.
+    let _ = existing_segments;
+    route_edge_with_avoidance(&route_ctx, None, grid, None)
+}
+
+fn collect_port_choice_segments(
+    graph: &Graph,
+    nodes: &BTreeMap<String, NodeLayout>,
+    subgraphs: &[SubgraphLayout],
+    edge_ports: &[EdgePortInfo],
+    excluded_idx: usize,
+) -> Vec<Segment> {
+    let mut segments = Vec::new();
+    for (idx, edge) in graph.edges.iter().enumerate() {
+        if idx == excluded_idx || edge.from == edge.to {
+            continue;
+        }
+        let Some(port) = edge_ports.get(idx).copied() else {
+            continue;
+        };
+        let Some((from, to)) = effective_edge_endpoint_layouts(graph, nodes, subgraphs, edge)
+        else {
+            continue;
+        };
+        segments.push((
+            anchor_point_for_node(&from, port.start_side, port.start_offset),
+            anchor_point_for_node(&to, port.end_side, port.end_offset),
+        ));
+    }
+    segments
+}
+
+fn port_collision_count(
+    graph: &Graph,
+    nodes: &BTreeMap<String, NodeLayout>,
+    edge_ports: &[EdgePortInfo],
+    edge_idx: usize,
+    candidate: EdgePortInfo,
+    config: &LayoutConfig,
+) -> usize {
+    let Some(edge) = graph.edges.get(edge_idx) else {
+        return 0;
+    };
+    let min_sep = routing_cell_size(config)
+        .max(config.node_spacing * 0.22)
+        .min(28.0);
+    let mut collisions = 0usize;
+    for (other_idx, other_edge) in graph.edges.iter().enumerate() {
+        if other_idx == edge_idx {
+            continue;
+        }
+        let Some(other) = edge_ports.get(other_idx).copied() else {
+            continue;
+        };
+        for (node_id, side, offset) in [
+            (&edge.from, candidate.start_side, candidate.start_offset),
+            (&edge.to, candidate.end_side, candidate.end_offset),
+        ] {
+            let Some(node) = nodes.get(node_id) else {
+                continue;
+            };
+            let candidate_axis =
+                port_axis_center(node, side) + clamp_port_offset_for_side(node, side, offset);
+            for (other_node_id, other_side, other_offset) in [
+                (&other_edge.from, other.start_side, other.start_offset),
+                (&other_edge.to, other.end_side, other.end_offset),
+            ] {
+                if other_node_id == node_id && other_side == side {
+                    let other_axis = port_axis_center(node, other_side)
+                        + clamp_port_offset_for_side(node, other_side, other_offset);
+                    if (candidate_axis - other_axis).abs() < min_sep {
+                        collisions += 1;
+                    }
+                }
+            }
+        }
+    }
+    collisions
+}
+
+fn score_port_route_candidate(
+    points: &[(f32, f32)],
+    edge: &crate::ir::Edge,
+    nodes: &BTreeMap<String, NodeLayout>,
+    obstacles: &[Obstacle],
+    label_obstacles: &[Obstacle],
+    existing_segments: &[Segment],
+    current: EdgePortInfo,
+    candidate: EdgePortInfo,
+    port_collisions: usize,
+) -> PortRouteScore {
+    let direction_violations =
+        path_cleanup::flowchart_endpoint_direction_violation_count(points, edge, nodes);
+    let obstacle_hits = path_obstacle_intersections(points, obstacles, &edge.from, &edge.to);
+    let non_endpoint_hits = usize::from(path_cleanup::flowchart_path_hits_non_endpoint_nodes(
+        points, &edge.from, &edge.to, nodes,
+    ));
+    let endpoint_reentries = path_cleanup::flowchart_endpoint_reentry_count(points, edge, nodes);
+    let label_hits = path_label_intersections(points, label_obstacles, None);
+    let (crossings, overlap) = if existing_segments.is_empty() {
+        (0usize, 0.0)
+    } else {
+        edge_crossings_with_existing(points, existing_segments)
+    };
+    let side_drift = if candidate.start_side == current.start_side {
+        (candidate.start_offset - current.start_offset).abs()
+    } else {
+        32.0 + candidate.start_offset.abs() * 0.25
+    } + if candidate.end_side == current.end_side {
+        (candidate.end_offset - current.end_offset).abs()
+    } else {
+        32.0 + candidate.end_offset.abs() * 0.25
+    };
+    PortRouteScore {
+        hard: direction_violations + obstacle_hits,
+        endpoint_reentries,
+        non_endpoint_hits,
+        label_hits,
+        port_collisions,
+        crossings,
+        overlap,
+        bends: path_bend_count(points),
+        len: path_length(points),
+        offset_drift: side_drift,
+    }
+}
+
+fn refine_flowchart_ports_with_route_candidates(
+    graph: &Graph,
+    nodes: &BTreeMap<String, NodeLayout>,
+    subgraphs: &[SubgraphLayout],
+    obstacles: &[Obstacle],
+    label_obstacles: &[Obstacle],
+    routing_grid: Option<&RoutingGrid>,
+    edge_roles: &[roles::FlowchartEdgeRole],
+    content_bounds: Option<NodeBounds>,
+    node_degrees: &HashMap<String, usize>,
+    side_loads: &HashMap<String, [usize; 4]>,
+    edge_ports: &mut [EdgePortInfo],
+    config: &LayoutConfig,
+    profile: RoutedSideSearchProfile,
+) {
+    let offset_limit = port_refinement_offset_limit(graph, profile);
+    let predicted_lane_assignments = plan::plan_edge_lanes(graph, nodes, subgraphs, config);
+    let predicted_lane_offsets =
+        predicted_lane_assignments.effective_offsets(edge_ports, graph.kind, config);
+    for (idx, edge) in graph.edges.iter().enumerate() {
+        if edge.from == edge.to {
+            continue;
+        }
+        let Some(current) = edge_ports.get(idx).copied() else {
+            continue;
+        };
+        let Some((from, to)) = effective_edge_endpoint_layouts(graph, nodes, subgraphs, edge)
+        else {
+            continue;
+        };
+        let base_offset = predicted_lane_offsets.get(idx).copied().unwrap_or_default();
+        let from_degree = node_degrees.get(&edge.from).copied().unwrap_or(0);
+        let to_degree = node_degrees.get(&edge.to).copied().unwrap_or(0);
+        let edge_role = edge_roles.get(idx).copied().unwrap_or_default();
+        let primary = edge_sides(&from, &to, graph.direction);
+        let balanced = edge_sides_balanced(
+            &edge.from,
+            &edge.to,
+            &from,
+            &to,
+            allow_low_degree_balancing_for_edge(edge, edge_role, from_degree, to_degree),
+            edge_role.is_back_edge,
+            graph.direction,
+            node_degrees,
+            side_loads,
+        );
+        let side_candidates = collect_routed_side_candidates(
+            &from,
+            &to,
+            primary,
+            balanced,
+            edge_role,
+            graph.direction,
+            content_bounds,
+            profile.max_candidates,
+        );
+        let existing_segments = if profile.use_existing_segments {
+            collect_port_choice_segments(graph, nodes, subgraphs, edge_ports, idx)
+        } else {
+            Vec::new()
+        };
+        let baseline_points = route_points_for_port_candidate(
+            graph,
+            edge,
+            &from,
+            &to,
+            current,
+            base_offset,
+            obstacles,
+            label_obstacles,
+            routing_grid,
+            &existing_segments,
+            config,
+            profile,
+        );
+        let baseline_collisions =
+            port_collision_count(graph, nodes, edge_ports, idx, current, config);
+        let mut best_score = score_port_route_candidate(
+            &baseline_points,
+            edge,
+            nodes,
+            obstacles,
+            label_obstacles,
+            &existing_segments,
+            current,
+            current,
+            baseline_collisions,
+        );
+        let mut best_port = current;
+        let remote_to = node_center(&to);
+        let remote_from = node_center(&from);
+
+        for (start_side, end_side, _) in side_candidates {
+            let start_current = if start_side == current.start_side {
+                current.start_offset
+            } else {
+                ideal_offset_for_side(remote_to, &from, start_side)
+            };
+            let end_current = if end_side == current.end_side {
+                current.end_offset
+            } else {
+                ideal_offset_for_side(remote_from, &to, end_side)
+            };
+            let start_offsets = port_offset_candidates(
+                &from,
+                start_side,
+                start_current,
+                remote_to,
+                config,
+                offset_limit,
+            );
+            let end_offsets = port_offset_candidates(
+                &to,
+                end_side,
+                end_current,
+                remote_from,
+                config,
+                offset_limit,
+            );
+            for start_offset in &start_offsets {
+                for end_offset in &end_offsets {
+                    let candidate_port = EdgePortInfo {
+                        start_side,
+                        end_side,
+                        start_offset: *start_offset,
+                        end_offset: *end_offset,
+                    };
+                    let points = route_points_for_port_candidate(
+                        graph,
+                        edge,
+                        &from,
+                        &to,
+                        candidate_port,
+                        base_offset,
+                        obstacles,
+                        label_obstacles,
+                        routing_grid,
+                        &existing_segments,
+                        config,
+                        profile,
+                    );
+                    let collisions =
+                        port_collision_count(graph, nodes, edge_ports, idx, candidate_port, config);
+                    let score = score_port_route_candidate(
+                        &points,
+                        edge,
+                        nodes,
+                        obstacles,
+                        label_obstacles,
+                        &existing_segments,
+                        current,
+                        candidate_port,
+                        collisions,
+                    );
+                    if best_score.hard == 0 && score.hard > 0 {
+                        continue;
+                    }
+                    if best_score.non_endpoint_hits == 0 && score.non_endpoint_hits > 0 {
+                        continue;
+                    }
+                    if score.endpoint_reentries > best_score.endpoint_reentries {
+                        continue;
+                    }
+                    if score.len > best_score.len * 3.0 + config.node_spacing * 4.0 {
+                        continue;
+                    }
+                    if port_route_score_is_better(score, best_score) {
+                        best_score = score;
+                        best_port = candidate_port;
+                    }
+                }
+            }
+        }
+
+        if let Some(port) = edge_ports.get_mut(idx) {
+            *port = best_port;
+        }
+    }
 }
 
 pub(in crate::layout) struct RoutedEdgeBuildContext<'a> {
@@ -838,11 +1398,8 @@ pub(in crate::layout) fn build_routed_edges(ctx: RoutedEdgeBuildContext<'_>) -> 
         let from_degree = node_degrees.get(&edge.from).copied().unwrap_or(0);
         let to_degree = node_degrees.get(&edge.to).copied().unwrap_or(0);
         let edge_role = edge_roles.get(idx).copied().unwrap_or_default();
-        let allow_low_degree_balancing = from_degree <= 4
-            && to_degree <= 4
-            && (edge.style == crate::ir::EdgeStyle::Dotted
-                || edge_role.is_back_edge
-                || edge_role.crosses_subgraph_boundary);
+        let allow_low_degree_balancing =
+            allow_low_degree_balancing_for_edge(edge, edge_role, from_degree, to_degree);
         let primary_sides = edge_sides(from, to, graph.direction);
         let balanced = edge_sides_balanced(
             &edge.from,
@@ -1103,6 +1660,23 @@ pub(in crate::layout) fn build_routed_edges(ctx: RoutedEdgeBuildContext<'_>) -> 
                 }
             }
         }
+    }
+    if let Some(profile) = routed_side_search_profile {
+        refine_flowchart_ports_with_route_candidates(
+            graph,
+            nodes,
+            subgraphs,
+            &obstacles,
+            &label_obstacles,
+            routing_grid.as_ref(),
+            &edge_roles,
+            content_bounds,
+            &node_degrees,
+            &side_loads,
+            &mut edge_ports,
+            config,
+            profile,
+        );
     }
     if let Some(metrics) = stage_metrics.as_mut() {
         metrics.port_assignment_us = metrics
