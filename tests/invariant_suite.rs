@@ -240,3 +240,66 @@ fn all_repository_fixtures_satisfy_layout_invariants() {
         failures.join("\n\n")
     );
 }
+
+#[test]
+fn flowchart_fixtures_have_zero_hard_routing_violations() {
+    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let mut fixtures = collect_fixtures(&manifest.join("tests/fixtures"));
+    fixtures.extend(collect_fixtures(&manifest.join("benches/fixtures")));
+    fixtures.extend(collect_fixtures(&manifest.join("docs/comparison_sources")));
+    fixtures.sort();
+
+    let theme = Theme::modern();
+    let config = LayoutConfig::default();
+    let mut checked = 0usize;
+    let mut failures = Vec::new();
+
+    for path in fixtures {
+        let rel = path
+            .strip_prefix(manifest)
+            .unwrap_or(&path)
+            .display()
+            .to_string();
+        let input = match std::fs::read_to_string(&path) {
+            Ok(input) => input,
+            Err(err) => {
+                failures.push(format!("{rel}: read failed: {err}"));
+                continue;
+            }
+        };
+        let parsed = match parse_mermaid(&input) {
+            Ok(parsed) => parsed,
+            Err(_) => continue,
+        };
+        if parsed.graph.kind != DiagramKind::Flowchart {
+            continue;
+        }
+
+        checked += 1;
+        let layout = compute_layout(&parsed.graph, &theme, &config);
+        let Some(metrics) = flowchart_quality_metrics(&layout) else {
+            failures.push(format!("{rel}: missing flowchart metrics"));
+            continue;
+        };
+        if metrics.hard_violation_count() != 0 || metrics.geometry_debt_count() != 0 {
+            failures.push(format!(
+                "{rel}: hard={} geometry_debt={} bad_source={} bad_target={} endpoint_intrusions={} endpoint_reentries={} non_endpoint_hits={}",
+                metrics.hard_violation_count(),
+                metrics.geometry_debt_count(),
+                metrics.bad_source_exits,
+                metrics.bad_target_entries,
+                metrics.endpoint_node_intrusions,
+                metrics.endpoint_node_reentries,
+                metrics.non_endpoint_node_hits
+            ));
+        }
+    }
+
+    assert!(checked > 0, "expected at least one flowchart fixture");
+    assert!(
+        failures.is_empty(),
+        "flowchart routing quality failures ({}):\n{}",
+        failures.len(),
+        failures.join("\n")
+    );
+}
