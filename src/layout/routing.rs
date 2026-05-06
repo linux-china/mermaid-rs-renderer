@@ -87,6 +87,9 @@ const ROUTE_SOFT_EDGE_CLEARANCE: f32 = 4.0;
 const ROUTE_OWN_LABEL_HARD_WEIGHT: usize = 6;
 /// Extra weight for an edge running too close to its own reserved label corridor.
 const ROUTE_OWN_LABEL_NEAR_WEIGHT: usize = 3;
+/// Extra clearance used by the final outside-hull fallback router.
+const EXTERIOR_FALLBACK_PAD_RATIO: f32 = 1.35;
+const EXTERIOR_FALLBACK_PAD_MIN: f32 = 36.0;
 
 // ── Label obstacle padding ──────────────────────────────────────────
 /// Padding around node labels when building label obstacles.
@@ -428,6 +431,7 @@ pub(super) struct RouteContext<'a> {
     pub(super) reserved_channels: &'a [ReservedRoutingChannel],
     pub(super) force_preferred_label_via: bool,
     pub(super) coarse_grid_retry: bool,
+    pub(super) allow_exterior_fallback: bool,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -470,6 +474,7 @@ pub(super) struct PreferredLabelMetrics {
 #[derive(Clone, Debug)]
 struct RouteCandidate {
     points: Vec<(f32, f32)>,
+    hard_hits: usize,
     hits: usize,
     own_label: PreferredLabelMetrics,
     cross: usize,
@@ -1303,6 +1308,7 @@ fn push_route_candidate(
     }
     let hard_hits = path_obstacle_intersections(&points, ctx.obstacles, ctx.from_id, ctx.to_id);
     let endpoint_hits = path_endpoint_intrusions(&points, ctx);
+    let hard_route_hits = hard_hits.saturating_add(endpoint_hits);
     let soft_hits = path_obstacle_near_intersections(
         &points,
         ctx.obstacles,
@@ -1341,6 +1347,7 @@ fn push_route_candidate(
     let len = path_length(&points);
     candidates.push(RouteCandidate {
         points,
+        hard_hits: hard_route_hits,
         hits,
         own_label,
         cross,
@@ -1606,6 +1613,107 @@ fn push_reserved_channel_candidates(
             continue;
         }
         push_route_candidate(points, ctx, existing_segments, use_existing, candidates);
+    }
+}
+
+fn obstacle_bounds_for_exterior_fallback(
+    ctx: &RouteContext<'_>,
+    route_start: (f32, f32),
+    route_end: (f32, f32),
+) -> Option<(f32, f32, f32, f32)> {
+    let mut min_x = route_start.0.min(route_end.0);
+    let mut max_x = route_start.0.max(route_end.0);
+    let mut min_y = route_start.1.min(route_end.1);
+    let mut max_y = route_start.1.max(route_end.1);
+    let mut any = false;
+
+    for obstacle in ctx.obstacles.iter().chain(ctx.label_obstacles.iter()) {
+        if !obstacle.x.is_finite()
+            || !obstacle.y.is_finite()
+            || !obstacle.width.is_finite()
+            || !obstacle.height.is_finite()
+            || obstacle.width <= 0.0
+            || obstacle.height <= 0.0
+        {
+            continue;
+        }
+        min_x = min_x.min(obstacle.x);
+        max_x = max_x.max(obstacle.x + obstacle.width);
+        min_y = min_y.min(obstacle.y);
+        max_y = max_y.max(obstacle.y + obstacle.height);
+        any = true;
+    }
+
+    any.then_some((min_x, max_x, min_y, max_y))
+}
+
+fn push_exterior_fallback_candidates(
+    ctx: &RouteContext<'_>,
+    route_start: (f32, f32),
+    route_end: (f32, f32),
+    existing_segments: &[((f32, f32), (f32, f32))],
+    use_existing: bool,
+    candidates: &mut Vec<RouteCandidate>,
+) {
+    let Some((min_x, max_x, min_y, max_y)) =
+        obstacle_bounds_for_exterior_fallback(ctx, route_start, route_end)
+    else {
+        return;
+    };
+    let pad =
+        (ctx.config.node_spacing * EXTERIOR_FALLBACK_PAD_RATIO).max(EXTERIOR_FALLBACK_PAD_MIN);
+    let left = min_x - pad;
+    let right = max_x + pad;
+    let top = min_y - pad;
+    let bottom = max_y + pad;
+
+    for x in [left, right] {
+        push_route_candidate(
+            vec![route_start, (x, route_start.1), (x, route_end.1), route_end],
+            ctx,
+            existing_segments,
+            use_existing,
+            candidates,
+        );
+    }
+    for y in [top, bottom] {
+        push_route_candidate(
+            vec![route_start, (route_start.0, y), (route_end.0, y), route_end],
+            ctx,
+            existing_segments,
+            use_existing,
+            candidates,
+        );
+    }
+    for x in [left, right] {
+        for y in [top, bottom] {
+            push_route_candidate(
+                vec![
+                    route_start,
+                    (x, route_start.1),
+                    (x, y),
+                    (route_end.0, y),
+                    route_end,
+                ],
+                ctx,
+                existing_segments,
+                use_existing,
+                candidates,
+            );
+            push_route_candidate(
+                vec![
+                    route_start,
+                    (route_start.0, y),
+                    (x, y),
+                    (x, route_end.1),
+                    route_end,
+                ],
+                ctx,
+                existing_segments,
+                use_existing,
+                candidates,
+            );
+        }
     }
 }
 
@@ -2153,6 +2261,25 @@ pub(super) fn route_edge_with_avoidance(
         }
     }
 
+    let min_hard_hits = candidates
+        .iter()
+        .map(|candidate| candidate.hard_hits)
+        .min()
+        .unwrap_or(usize::MAX);
+    if ctx.allow_exterior_fallback
+        && occupancy.is_none()
+        && (candidates.is_empty() || min_hard_hits > 0)
+    {
+        push_exterior_fallback_candidates(
+            ctx,
+            route_start,
+            route_end,
+            existing_segments,
+            use_existing,
+            &mut candidates,
+        );
+    }
+
     if let Some(grid) = occupancy {
         let mut best_idx = None;
         let mut best_key = None;
@@ -2619,4 +2746,92 @@ pub(super) fn edge_crossings_with_existing(
         }
     }
     (crossings, overlap)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ir::{Direction, NodeShape, NodeStyle};
+    use crate::layout::TextBlock;
+
+    fn node(id: &str, x: f32, y: f32, width: f32, height: f32) -> NodeLayout {
+        NodeLayout {
+            id: id.to_string(),
+            x,
+            y,
+            width,
+            height,
+            label: TextBlock {
+                lines: vec![id.to_string()],
+                width: 20.0,
+                height: 12.0,
+            },
+            shape: NodeShape::Rectangle,
+            style: NodeStyle::default(),
+            link: None,
+            anchor_subgraph: None,
+            hidden: false,
+            icon: None,
+        }
+    }
+
+    fn obstacle(id: &str, x: f32, y: f32, width: f32, height: f32) -> Obstacle {
+        Obstacle {
+            id: id.to_string(),
+            x,
+            y,
+            width,
+            height,
+            members: None,
+        }
+    }
+
+    #[test]
+    fn exterior_fallback_routes_around_overconstrained_corridor() {
+        let mut config = LayoutConfig::default();
+        config.flowchart.routing.enable_grid_router = false;
+        let from = node("a", 0.0, 0.0, 60.0, 40.0);
+        let to = node("b", 300.0, 0.0, 60.0, 40.0);
+        let obstacles = vec![obstacle("blocker", 90.0, -400.0, 180.0, 800.0)];
+        let ctx = RouteContext {
+            from_id: "a",
+            to_id: "b",
+            from: &from,
+            to: &to,
+            direction: Direction::LeftRight,
+            config: &config,
+            obstacles: &obstacles,
+            label_obstacles: &[],
+            fast_route: false,
+            base_offset: 0.0,
+            start_side: EdgeSide::Right,
+            end_side: EdgeSide::Left,
+            start_offset: 0.0,
+            end_offset: 0.0,
+            stub_len: port_stub_length(&config, &from, &to),
+            start_inset: 0.0,
+            end_inset: 0.0,
+            prefer_shorter_ties: true,
+            preferred_label_id: None,
+            preferred_label_center: None,
+            preferred_label_obstacle: None,
+            preferred_label_clearance: 0.0,
+            reserved_channels: &[],
+            force_preferred_label_via: false,
+            coarse_grid_retry: false,
+            allow_exterior_fallback: true,
+        };
+
+        let points = route_edge_with_avoidance(&ctx, None, None, None);
+
+        assert_eq!(
+            path_obstacle_intersections(&points, &obstacles, "a", "b"),
+            0,
+            "fallback route should avoid the blocking corridor: {points:?}"
+        );
+        assert!(
+            points.iter().any(|(_, y)| *y < -430.0 || *y > 430.0),
+            "expected route to use an exterior rail outside the obstacle hull: {points:?}"
+        );
+    }
 }

@@ -524,6 +524,7 @@ fn repair_flowchart_endpoint_reentries_by_rerouting(
                     reserved_channels,
                     force_preferred_label_via: false,
                     coarse_grid_retry: true,
+                    allow_exterior_fallback: false,
                 };
                 let candidate = route_edge_with_avoidance(
                     &route_ctx,
@@ -827,6 +828,7 @@ fn routed_side_candidate_score(
         reserved_channels: &[],
         force_preferred_label_via: false,
         coarse_grid_retry: true,
+        allow_exterior_fallback: false,
     };
     let existing = (!existing_segments.is_empty()).then_some(existing_segments);
     let grid = profile.use_grid.then_some(routing_grid).flatten();
@@ -1154,6 +1156,7 @@ fn route_points_for_port_candidate(
         reserved_channels: &[],
         force_preferred_label_via: false,
         coarse_grid_retry: true,
+        allow_exterior_fallback: false,
     };
     let grid = profile.use_grid.then_some(routing_grid).flatten();
     // For full port refinement, generate the candidate's natural path first and
@@ -1776,6 +1779,7 @@ fn optimize_flowchart_routes_globally(
                     reserved_channels,
                     force_preferred_label_via: false,
                     coarse_grid_retry: true,
+                    allow_exterior_fallback: false,
                 };
                 route_edge_with_avoidance(
                     &route_ctx,
@@ -1969,6 +1973,7 @@ fn negotiate_flowchart_route_congestion(
                 reserved_channels,
                 force_preferred_label_via: false,
                 coarse_grid_retry: true,
+                allow_exterior_fallback: false,
             };
             let mut candidate = route_edge_with_avoidance(
                 &route_ctx,
@@ -2596,6 +2601,7 @@ pub(in crate::layout) fn build_routed_edges(ctx: RoutedEdgeBuildContext<'_>) -> 
             reserved_channels: &reserved_channels,
             force_preferred_label_via: graph.kind != DiagramKind::Flowchart,
             coarse_grid_retry: graph.kind == DiagramKind::Flowchart,
+            allow_exterior_fallback: graph.kind == DiagramKind::Flowchart,
         };
         let use_existing_for_edge = !(matches!(graph.kind, DiagramKind::Class | DiagramKind::Er)
             && edge.style == crate::ir::EdgeStyle::Dotted);
@@ -2637,6 +2643,7 @@ pub(in crate::layout) fn build_routed_edges(ctx: RoutedEdgeBuildContext<'_>) -> 
                 reserved_channels: route_ctx.reserved_channels,
                 force_preferred_label_via: route_ctx.force_preferred_label_via,
                 coarse_grid_retry: route_ctx.coarse_grid_retry,
+                allow_exterior_fallback: false,
             };
             let fast_points = route_edge_with_avoidance(&fast_ctx, None, None, existing_for_edge);
             let fast_hits = path_obstacle_intersections(
