@@ -282,3 +282,44 @@ stability, perceptual/graph-aware conformance (vs pixel RMS), per-type
 readability metrics (everything is flowchart-axis based), memory +
 scaling + tail-latency, balanced multi-type corpus, and a
 travels-with-repo baseline that compares vs the prior commit.
+
+## Implementation status (updated)
+
+Built and wired into CI (`cargo test --all-targets` plus a dedicated
+`layout-quality-gate` job):
+
+- **Domain 1 - Correctness** (`tests/correctness_suite.rs`): per-fixture
+  node/edge/label parity, render validity (well-formed SVG, no NaN/Inf,
+  positive viewBox), edge-count parity. Handles wrapped labels, class/ER
+  compartment tables, line-break spellings, synthetic-node exclusion.
+- **Domain 2 - Hard gate** (`scripts/hard_gate.py`,
+  `tests/hard_gate_baseline.json`): renders the corpus, partitions
+  GREEN/RED on hard geometry predicates (node overlap, edge-through-node,
+  off-boundary endpoint, subgraph intrusion, non-finite), kind-gated and
+  shape/arrowhead-aware. Baseline ratchet: fails only on new reds or
+  worse counts; improvements nudge a re-lock.
+- **Domain 3 - Determinism + stability** (`tests/determinism_suite.rs`):
+  byte-identical SVG and identical geometry across runs for every
+  fixture; incremental-stability probe (appending a leaf barely moves
+  existing nodes).
+- **Domain 4 - Per-type semantics** (`tests/semantic_suite.rs`): pie
+  slice angles sum to a full circle and are value-proportional; sankey
+  positive thickness and node-total throughput; sequence lifeline
+  verticality, participant order, autonumber monotonicity; gantt
+  in-bounds tasks and duration-monotonic widths.
+- **Output-shape guards** (`tests/output_shape_suite.rs`): straight
+  chains stay bend-free in all directions/sizes; minimal edge points;
+  symmetric fan-out. Directly guards the on_segment bug class.
+
+Renderer bugs these surfaced and fixed:
+- C4 connectors no longer cut through intervening shapes (route around).
+- State terminal/start pseudostate markers no longer overlap real states.
+- Gantt task ids ending in a duration letter (e.g. `arch`) are no longer
+  misparsed as durations (this had blown the time axis out to year 2240).
+
+Still open (gated/ratcheted, not regressions):
+- Overlapping sibling subgraphs when nodes connect across them in dense
+  multi-subgraph flowcharts (9 RED fixtures, mostly mega stress cases).
+- Perceptual/graph-aware conformance (SSIM) to replace pixel RMS.
+- Corpus expansion to full tiers for under-covered types.
+- Memory/scaling/tail-latency performance envelope.
