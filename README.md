@@ -131,6 +131,10 @@ scoop bucket add mmdr https://github.com/1jehuang/scoop-mmdr && scoop install mm
 
 # AUR (Arch)
 yay -S mmdr-bin
+
+# Nix (flake)
+nix run github:1jehuang/mermaid-rs-renderer -- --help
+nix profile install github:1jehuang/mermaid-rs-renderer
 ```
 
 ## Quick Start

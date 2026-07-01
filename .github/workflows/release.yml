@@ -31,23 +31,21 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             ext: ""
-            use_cross: false
-          - os: ubuntu-latest
+          - os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
             ext: ""
-            use_cross: true
           - os: macos-latest
             target: x86_64-apple-darwin
             ext: ""
-            use_cross: false
           - os: macos-latest
             target: aarch64-apple-darwin
             ext: ""
-            use_cross: false
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             ext: ".exe"
-            use_cross: false
+          - os: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            ext: ".exe"
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
@@ -55,19 +53,10 @@ jobs:
         with:
           targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
-      - uses: taiki-e/install-action@v2
-        if: matrix.use_cross
-        with:
-          tool: cross
       - name: Build
-        run: |
-          if [ "${{ matrix.use_cross }}" = "true" ]; then
-            cross build --release --target ${{ matrix.target }}
-          else
-            cargo build --release --target ${{ matrix.target }}
-          fi
+        run: cargo build --release --target ${{ matrix.target }}
       - name: Verify binary version (unix)
-        if: matrix.os != 'windows-latest' && !matrix.use_cross
+        if: runner.os != 'Windows'
         run: |
           EXPECTED="mmdr ${GITHUB_REF_NAME#v}"
           ACTUAL="$(target/${{ matrix.target }}/release/mmdr --version)"
@@ -76,7 +65,7 @@ jobs:
             exit 1
           fi
       - name: Verify binary version (windows)
-        if: matrix.os == 'windows-latest'
+        if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $expected = "mmdr $($env:GITHUB_REF_NAME.Substring(1))"
@@ -86,13 +75,13 @@ jobs:
             exit 1
           }
       - name: Package (unix)
-        if: matrix.os != 'windows-latest'
+        if: runner.os != 'Windows'
         run: |
           mkdir -p dist
           cp target/${{ matrix.target }}/release/mmdr${{ matrix.ext }} dist/
           tar -czf mmdr-${{ matrix.target }}.tar.gz -C dist .
       - name: Package (windows)
-        if: matrix.os == 'windows-latest'
+        if: runner.os == 'Windows'
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
