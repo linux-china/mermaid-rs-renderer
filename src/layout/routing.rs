@@ -2238,8 +2238,9 @@ pub(super) fn route_edge_with_avoidance(
                 use_existing,
                 &mut candidates,
             );
-            if candidates.len() > before {
-                let candidate = &candidates[candidates.len() - 1];
+            if candidates.len() > before
+                && let Some(candidate) = candidates.last()
+            {
                 coarse_retry = candidate.hits > 0
                     || own_label_score(candidate.own_label) > 0
                     || candidate.label_hits > 0
@@ -2788,6 +2789,65 @@ mod tests {
             height,
             members: None,
         }
+    }
+
+    #[test]
+    fn offscreen_route_falls_back_to_straight_line_instead_of_panicking() {
+        // Regression for issue #37: when layout coordinates exceed the
+        // router's sanity limit (see `path_coords_reasonable`), every route
+        // candidate is rejected and the candidate list ends up empty. Older
+        // builds indexed `candidates[best_idx]` unconditionally and panicked
+        // with "index out of bounds: the len is 0 but the index is 0"
+        // (routing.rs:1994 in v0.2.1). The router must return a straight-line
+        // fallback route instead.
+        let config = LayoutConfig::default();
+        let from = node("a", 150_000.0, 0.0, 60.0, 40.0);
+        let to = node("b", 150_300.0, 0.0, 60.0, 40.0);
+        let ctx = RouteContext {
+            from_id: "a",
+            to_id: "b",
+            from: &from,
+            to: &to,
+            direction: Direction::LeftRight,
+            config: &config,
+            obstacles: &[],
+            label_obstacles: &[],
+            fast_route: false,
+            base_offset: 0.0,
+            start_side: EdgeSide::Right,
+            end_side: EdgeSide::Left,
+            start_offset: 0.0,
+            end_offset: 0.0,
+            stub_len: port_stub_length(&config, &from, &to),
+            start_inset: 0.0,
+            end_inset: 0.0,
+            prefer_shorter_ties: true,
+            preferred_label_id: None,
+            preferred_label_center: None,
+            preferred_label_obstacle: None,
+            preferred_label_clearance: 0.0,
+            reserved_channels: &[],
+            force_preferred_label_via: false,
+            coarse_grid_retry: true,
+            allow_exterior_fallback: true,
+        };
+
+        // No-occupancy branch.
+        let points = route_edge_with_avoidance(&ctx, None, None, None);
+        assert!(
+            points.len() >= 2,
+            "expected a straight-line fallback route, got {points:?}"
+        );
+
+        // Occupancy branch takes a separate selection path; it must fall back
+        // the same way when the candidate list is empty.
+        let mut occupancy = EdgeOccupancy::new(20.0);
+        occupancy.add_path(&[(150_000.0, 20.0), (150_300.0, 20.0)]);
+        let points = route_edge_with_avoidance(&ctx, Some(&occupancy), None, None);
+        assert!(
+            points.len() >= 2,
+            "expected a straight-line fallback route with occupancy, got {points:?}"
+        );
     }
 
     #[test]
