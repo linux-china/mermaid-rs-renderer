@@ -349,6 +349,9 @@ fn render_all_fixtures() {
     // Keep this list explicit so new diagram types must be added intentionally.
     let candidates = [
         "architecture/basic.mmd",
+        "architecture/ports.mmd",
+        "architecture/junctions.mmd",
+        "architecture/bends.mmd",
         "block/basic.mmd",
         "c4/basic.mmd",
         "class/basic.mmd",
@@ -971,4 +974,167 @@ fn sequence_alt_frame_geometry_matches_mermaid() {
         frame.y,
         frame.y + frame.height
     );
+}
+
+// ── Architecture-beta layout semantics (issues #112, #59) ────────────────
+
+/// Helpers for asserting relative grid placement of architecture services.
+fn arch_layout(fixture: &str) -> Layout {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("fixtures")
+        .join(fixture);
+    let (layout, _svg) = render_fixture(&root);
+    layout
+}
+
+fn assert_left_of(layout: &Layout, left: &str, right: &str) {
+    let a = layout.nodes.get(left).unwrap_or_else(|| panic!("{left}"));
+    let b = layout.nodes.get(right).unwrap_or_else(|| panic!("{right}"));
+    assert!(
+        a.x + a.width <= b.x + 1.0,
+        "{left} (x={}) should be left of {right} (x={})",
+        a.x,
+        b.x
+    );
+}
+
+fn assert_above(layout: &Layout, top: &str, bottom: &str) {
+    let a = layout.nodes.get(top).unwrap_or_else(|| panic!("{top}"));
+    let b = layout
+        .nodes
+        .get(bottom)
+        .unwrap_or_else(|| panic!("{bottom}"));
+    assert!(
+        a.y + a.height <= b.y + 1.0,
+        "{top} (y={}) should be above {bottom} (y={})",
+        a.y,
+        b.y
+    );
+}
+
+fn assert_same_row(layout: &Layout, a_id: &str, b_id: &str) {
+    let a = layout.nodes.get(a_id).unwrap_or_else(|| panic!("{a_id}"));
+    let b = layout.nodes.get(b_id).unwrap_or_else(|| panic!("{b_id}"));
+    let a_cy = a.y + a.height / 2.0;
+    let b_cy = b.y + b.height / 2.0;
+    assert!(
+        (a_cy - b_cy).abs() < 1.0,
+        "{a_id} (cy={a_cy}) and {b_id} (cy={b_cy}) should share a row"
+    );
+}
+
+fn assert_same_column(layout: &Layout, a_id: &str, b_id: &str) {
+    let a = layout.nodes.get(a_id).unwrap_or_else(|| panic!("{a_id}"));
+    let b = layout.nodes.get(b_id).unwrap_or_else(|| panic!("{b_id}"));
+    let a_cx = a.x + a.width / 2.0;
+    let b_cx = b.x + b.width / 2.0;
+    assert!(
+        (a_cx - b_cx).abs() < 1.0,
+        "{a_id} (cx={a_cx}) and {b_id} (cx={b_cx}) should share a column"
+    );
+}
+
+/// Issue #112: `db:L -- R:server` places server one cell to the LEFT of db,
+/// `disk1:T -- B:server` places disk1 BELOW server, `disk2:T -- B:db` places
+/// disk2 BELOW db (mermaid-js spatial map semantics).
+#[test]
+fn architecture_ports_drive_grid_placement() {
+    let layout = arch_layout("architecture/ports.mmd");
+    assert_left_of(&layout, "server", "db");
+    assert_above(&layout, "server", "disk1");
+    assert_above(&layout, "db", "disk2");
+    assert_same_row(&layout, "server", "db");
+    assert_same_row(&layout, "disk1", "disk2");
+    assert_same_column(&layout, "server", "disk1");
+    assert_same_column(&layout, "db", "disk2");
+
+    // The group box must contain all four services.
+    let group = layout
+        .subgraphs
+        .first()
+        .expect("api group should be laid out");
+    for id in ["db", "disk1", "disk2", "server"] {
+        let node = layout.nodes.get(id).unwrap();
+        assert!(
+            node.x >= group.x
+                && node.y >= group.y
+                && node.x + node.width <= group.x + group.width
+                && node.y + node.height <= group.y + group.height,
+            "{id} should be inside the api group box"
+        );
+    }
+}
+
+/// Issue #59: the official junction example must form a 2D grid with the
+/// junctions centered between their connected disks/gateways.
+#[test]
+fn architecture_junctions_form_two_crosses() {
+    let layout = arch_layout("architecture/junctions.mmd");
+    assert_left_of(&layout, "left_disk", "junctionCenter");
+    assert_left_of(&layout, "junctionCenter", "junctionRight");
+    assert_above(&layout, "top_disk", "junctionCenter");
+    assert_above(&layout, "junctionCenter", "bottom_disk");
+    assert_above(&layout, "top_gateway", "junctionRight");
+    assert_above(&layout, "junctionRight", "bottom_gateway");
+    assert_same_row(&layout, "junctionCenter", "junctionRight");
+    assert_same_column(&layout, "top_disk", "bottom_disk");
+    assert_same_column(&layout, "top_gateway", "bottom_gateway");
+}
+
+/// Port-aware routing: edges must leave from the declared node side, and
+/// mixed-axis port pairs get an L-shaped (single-bend) orthogonal path.
+#[test]
+fn architecture_edges_route_from_declared_ports() {
+    let layout = arch_layout("architecture/bends.mmd");
+    let node = |id: &str| layout.nodes.get(id).unwrap();
+    let edge = |from: &str, to: &str| {
+        layout
+            .edges
+            .iter()
+            .find(|e| e.from == from && e.to == to)
+            .unwrap_or_else(|| panic!("edge {from}->{to}"))
+    };
+
+    // a:R -- L:b leaves a's right side and enters b's left side, straight.
+    let ab = edge("a", "b");
+    let a = node("a");
+    let b = node("b");
+    let start = ab.points.first().unwrap();
+    let end = ab.points.last().unwrap();
+    assert!((start.0 - (a.x + a.width)).abs() < 1.0, "a:R start");
+    assert!((end.0 - b.x).abs() < 1.0, "L:b end");
+    assert_eq!(ab.points.len(), 2, "aligned R--L edge should be straight");
+
+    // a:B -- T:c leaves a's bottom and enters c's top, straight vertical.
+    let ac = edge("a", "c");
+    let c = node("c");
+    let start = ac.points.first().unwrap();
+    let end = ac.points.last().unwrap();
+    assert!((start.1 - (a.y + a.height)).abs() < 1.0, "a:B start");
+    assert!((end.1 - c.y).abs() < 1.0, "T:c end");
+
+    // c:R -- L:b is a cross-axis placement (c below-left of b): the L/R port
+    // pair on offset rows must produce a Z-shaped path with two bends.
+    let cb = edge("c", "b");
+    let start = cb.points.first().unwrap();
+    let end = cb.points.last().unwrap();
+    assert!((start.0 - (c.x + c.width)).abs() < 1.0, "c:R start");
+    assert!((end.0 - b.x).abs() < 1.0, "L:b end");
+    assert_eq!(
+        cb.points.len(),
+        4,
+        "offset R--L edge should be Z-shaped (2 bends), got {:?}",
+        cb.points
+    );
+    // All segments must stay orthogonal.
+    for pair in cb.points.windows(2) {
+        let dx = (pair[0].0 - pair[1].0).abs();
+        let dy = (pair[0].1 - pair[1].1).abs();
+        assert!(
+            dx < 0.01 || dy < 0.01,
+            "architecture edge segments must be orthogonal: {:?}",
+            cb.points
+        );
+    }
 }

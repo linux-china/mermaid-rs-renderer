@@ -44,9 +44,21 @@ fn architecture_iconify_icons_render_as_symbols_not_broken_question_marks() {
         svg.contains('λ'),
         "lambda icon should get a symbolic fallback"
     );
+    // Port directions must drive grid placement (issue #112): server sits to
+    // the left of db (db:L -- R:server), disk1 below server, disk2 below db.
+    let node = |id: &str| layout.nodes.get(id).expect(id);
+    let (db, server, disk1, disk2) = (node("db"), node("server"), node("disk1"), node("disk2"));
     assert!(
-        layout.edges.iter().all(|edge| edge.points.len() >= 4),
-        "architecture renderer should preserve routed bend points instead of flattening edges"
+        server.x + server.width <= db.x + 1.0,
+        "server should be left of db"
+    );
+    assert!(
+        disk1.y >= server.y + server.height - 1.0,
+        "disk1 should be below server"
+    );
+    assert!(
+        disk2.y >= db.y + db.height - 1.0,
+        "disk2 should be below db"
     );
 }
 

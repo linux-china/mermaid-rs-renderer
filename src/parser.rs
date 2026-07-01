@@ -4135,6 +4135,12 @@ fn parse_architecture_diagram(input: &str) -> Result<ParseOutput> {
         if let Some(edge_spec) = parse_architecture_edge(line) {
             graph.ensure_node(&edge_spec.from, None, None);
             graph.ensure_node(&edge_spec.to, None, None);
+            let edge_index = graph.edges.len();
+            if edge_spec.from_port.is_some() || edge_spec.to_port.is_some() {
+                graph
+                    .arch_edge_ports
+                    .insert(edge_index, (edge_spec.from_port, edge_spec.to_port));
+            }
             graph.edges.push(crate::ir::Edge {
                 from: edge_spec.from,
                 to: edge_spec.to,
@@ -4160,6 +4166,8 @@ fn parse_architecture_diagram(input: &str) -> Result<ParseOutput> {
 struct ArchitectureEdgeSpec {
     from: String,
     to: String,
+    from_port: Option<crate::ir::ArchDir>,
+    to_port: Option<crate::ir::ArchDir>,
     arrow_start: bool,
     arrow_end: bool,
 }
@@ -4236,15 +4244,17 @@ fn parse_architecture_edge(line: &str) -> Option<ArchitectureEdgeSpec> {
             let left = line[..idx].trim();
             let right = line[idx + arrow.len()..].trim();
             // Left side format: ID:Port (e.g., "gateway:R")
-            let from = strip_arch_port_left(left);
+            let (from, from_port) = split_arch_port_left(left);
             // Right side format: Port:ID (e.g., "L:app")
-            let to = strip_arch_port_right(right);
+            let (to, to_port) = split_arch_port_right(right);
             if from.is_empty() || to.is_empty() {
                 return None;
             }
             return Some(ArchitectureEdgeSpec {
                 from: from.to_string(),
                 to: to.to_string(),
+                from_port,
+                to_port,
                 arrow_start,
                 arrow_end,
             });
@@ -4257,16 +4267,30 @@ fn strip_arch_group_modifier(token: &str) -> &str {
     token.trim().strip_suffix("{group}").unwrap_or(token).trim()
 }
 
-fn strip_arch_port_left(token: &str) -> &str {
-    // "gateway:R" -> "gateway" (take the first part before ':')
-    let id = token.split(':').next().unwrap_or(token).trim();
-    strip_arch_group_modifier(id)
+fn parse_arch_port(token: &str) -> Option<crate::ir::ArchDir> {
+    let trimmed = token.trim();
+    let mut chars = trimmed.chars();
+    let first = chars.next()?;
+    if chars.next().is_some() {
+        return None;
+    }
+    crate::ir::ArchDir::from_char(first)
 }
 
-fn strip_arch_port_right(token: &str) -> &str {
-    // "L:app" -> "app" (take the last part after ':')
-    let id = token.split(':').next_back().unwrap_or(token).trim();
-    strip_arch_group_modifier(id)
+fn split_arch_port_left(token: &str) -> (&str, Option<crate::ir::ArchDir>) {
+    // "gateway:R" -> ("gateway", Some(Right))
+    match token.split_once(':') {
+        Some((id, port)) => (strip_arch_group_modifier(id.trim()), parse_arch_port(port)),
+        None => (strip_arch_group_modifier(token.trim()), None),
+    }
+}
+
+fn split_arch_port_right(token: &str) -> (&str, Option<crate::ir::ArchDir>) {
+    // "L:app" -> ("app", Some(Left))
+    match token.split_once(':') {
+        Some((port, id)) => (strip_arch_group_modifier(id.trim()), parse_arch_port(port)),
+        None => (strip_arch_group_modifier(token.trim()), None),
+    }
 }
 
 fn parse_radar_diagram(input: &str) -> Result<ParseOutput> {
@@ -7083,6 +7107,23 @@ A["foo & bar"] & B --> C"#;
         assert_eq!(parsed.graph.kind, DiagramKind::Architecture);
         assert_eq!(parsed.graph.subgraphs.len(), 1);
         assert_eq!(parsed.graph.edges.len(), 1);
+    }
+
+    #[test]
+    fn parse_architecture_edge_ports() {
+        use crate::ir::ArchDir;
+        let input = "architecture-beta\n  service db(database)[DB]\n  service server(server)[Server]\n  service disk(disk)[Disk]\n  db:L -- R:server\n  disk:T --> B:db";
+        let parsed = parse_mermaid(input).unwrap();
+        assert_eq!(parsed.graph.edges.len(), 2);
+        assert_eq!(
+            parsed.graph.arch_edge_ports.get(&0),
+            Some(&(Some(ArchDir::Left), Some(ArchDir::Right)))
+        );
+        assert_eq!(
+            parsed.graph.arch_edge_ports.get(&1),
+            Some(&(Some(ArchDir::Top), Some(ArchDir::Bottom)))
+        );
+        assert!(parsed.graph.edges[1].arrow_end);
     }
 
     #[test]

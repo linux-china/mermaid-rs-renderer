@@ -364,6 +364,31 @@ pub struct Edge {
     pub style: EdgeStyle,
 }
 
+/// Port direction on an architecture-beta service (`db:L -- R:server`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ArchDir {
+    Left,
+    Right,
+    Top,
+    Bottom,
+}
+
+impl ArchDir {
+    pub fn from_char(ch: char) -> Option<Self> {
+        match ch.to_ascii_uppercase() {
+            'L' => Some(ArchDir::Left),
+            'R' => Some(ArchDir::Right),
+            'T' => Some(ArchDir::Top),
+            'B' => Some(ArchDir::Bottom),
+            _ => None,
+        }
+    }
+
+    pub fn is_horizontal(self) -> bool {
+        matches!(self, ArchDir::Left | ArchDir::Right)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EdgeStyle {
     Solid,
@@ -437,6 +462,9 @@ pub struct Graph {
     pub xychart: XYChartData,
     pub timeline: TimelineData,
     pub block: Option<BlockDiagram>,
+    /// Architecture-beta edge port directions, keyed by edge index.
+    /// `(from_port, to_port)` as written in `from:PORT -- PORT:to`.
+    pub arch_edge_ports: HashMap<usize, (Option<ArchDir>, Option<ArchDir>)>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -581,6 +609,7 @@ impl Graph {
             xychart: XYChartData::default(),
             timeline: TimelineData::default(),
             block: None,
+            arch_edge_ports: HashMap::new(),
         }
     }
 
