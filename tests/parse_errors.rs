@@ -281,3 +281,64 @@ Alice->>Bob: hi
     let svg = render_strict(input, RenderOptions::default()).expect("valid sequence should render");
     assert!(svg.contains("<svg"));
 }
+
+// =====================================================================
+// Issue #102: `end` inside sequence frames / block-beta groups must
+// not be rejected by the subgraph-balance check.
+// =====================================================================
+
+#[test]
+fn valid_sequence_par_alt_frames_render_strict() {
+    let input = "sequenceDiagram
+participant A
+participant B
+par one
+A->>B: hello
+and two
+B->>A: hi
+end
+alt yes
+A->>B: ok
+else no
+B->>A: nope
+end
+";
+    let svg = render_strict(input, RenderOptions::default())
+        .expect("sequence par/alt frames should render");
+    assert!(svg.contains("<svg"));
+}
+
+#[test]
+fn valid_block_beta_named_group_renders_strict() {
+    let input = "block-beta
+columns 3
+a b c
+block:group1[\"Group One\"]
+d
+e
+end
+f
+group1 --> f
+";
+    let svg = render_strict(input, RenderOptions::default())
+        .expect("block-beta named nested group should render");
+    assert!(svg.contains("<svg"));
+    assert!(svg.contains("Group One"));
+}
+
+#[test]
+fn block_beta_stray_end_is_still_reported() {
+    let input = "block-beta\na b\nend\n";
+    let err = parse_mermaid_strict(input).unwrap_err();
+    assert!(matches!(
+        err,
+        ParseError::UnexpectedToken { ref found, .. } if found == "end"
+    ));
+}
+
+#[test]
+fn sequence_unclosed_frame_is_reported() {
+    let input = "sequenceDiagram\nalt yes\nAlice->>Bob: hi\n";
+    let err = parse_mermaid_strict(input).unwrap_err();
+    assert!(matches!(err, ParseError::UnclosedSubgraph { opened_at: 2 }));
+}

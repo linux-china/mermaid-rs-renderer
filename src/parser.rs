@@ -3786,6 +3786,10 @@ fn parse_block_diagram(input: &str) -> Result<ParseOutput> {
     graph.direction = Direction::LeftRight;
     let (lines, init_config) = preprocess_input(input)?;
     let mut block = crate::ir::BlockDiagram::default();
+    // Depth of nested `block:id ... end` groups currently being
+    // skipped. The group node itself represents the section; its
+    // inner nodes are not laid out individually.
+    let mut group_depth = 0usize;
 
     for raw_line in lines {
         let line = raw_line.trim();
@@ -3793,7 +3797,56 @@ fn parse_block_diagram(input: &str) -> Result<ParseOutput> {
             continue;
         }
         let lower = line.to_ascii_lowercase();
+        if group_depth > 0 {
+            // Inside a named group: only track nesting until the
+            // matching `end`.
+            if lower.starts_with("block:") {
+                group_depth += 1;
+            } else if lower == "end" || lower.starts_with("end ") || lower.starts_with("end\t") {
+                group_depth -= 1;
+            }
+            continue;
+        }
+        if let Some(group_token) = line.strip_prefix("block:") {
+            // Named nested group: `block:id["Label"]` (optionally
+            // with a `:span` suffix). The group becomes a regular
+            // node so edges referencing its id resolve; the inner
+            // nodes are skipped (issue #102).
+            let mut token = group_token.trim();
+            let mut span = 1usize;
+            if let Some((base, span_str)) = token.rsplit_once(':')
+                && let Ok(parsed_span) = span_str.parse::<usize>()
+                && parsed_span > 0
+            {
+                span = parsed_span;
+                token = base;
+            }
+            let (id, label, shape, classes) = parse_node_token(token);
+            if !id.is_empty() {
+                graph.ensure_node(&id, label, shape);
+                if !classes.is_empty() {
+                    apply_node_classes(&mut graph, &id, &classes);
+                }
+                block.nodes.push(crate::ir::BlockNode {
+                    id,
+                    span,
+                    is_space: false,
+                });
+            }
+            group_depth = 1;
+            continue;
+        }
         if lower.starts_with("block") {
+            // Diagram header (`block-beta` / `block`).
+            continue;
+        }
+        if lower.starts_with("classdef ")
+            || lower.starts_with("class ")
+            || lower.starts_with("style ")
+            || lower.starts_with("linkstyle ")
+        {
+            // Styling directives are not block nodes; ignore them
+            // so their tokens never become phantom nodes.
             continue;
         }
         if lower.starts_with("columns") {
@@ -6481,6 +6534,27 @@ A["foo & bar"] & B --> C"#;
     }
 
     #[test]
+    fn parse_dotted_edge_label_with_br_and_hyphen() {
+        // Issue #28: `-. Ingress-managed <br> load balancer .->` must
+        // keep the whole label (including the <br>) intact instead of
+        // splitting it at the hyphen or dots.
+        let input = "graph LR;\n  client([client])-. Ingress-managed <br> load balancer .->ingress[Ingress];";
+        let parsed = parse_mermaid(input).unwrap();
+        assert_eq!(parsed.graph.edges.len(), 1);
+        let edge = &parsed.graph.edges[0];
+        assert_eq!(edge.from, "client");
+        assert_eq!(edge.to, "ingress");
+        assert_eq!(
+            edge.label.as_deref(),
+            Some("Ingress-managed <br> load balancer")
+        );
+        assert_eq!(edge.style, crate::ir::EdgeStyle::Dotted);
+        assert!(edge.arrow_end);
+        assert_eq!(parsed.graph.nodes.len(), 2);
+        assert!(!parsed.graph.nodes.contains_key("managed"));
+    }
+
+    #[test]
     fn parse_pipe_edge_label() {
         let input = "flowchart LR\nA -->|yes| B";
         let parsed = parse_mermaid(input).unwrap();
@@ -6942,6 +7016,46 @@ A["foo & bar"] & B --> C"#;
         let parsed = parse_mermaid(input).unwrap();
         assert_eq!(parsed.graph.kind, DiagramKind::Block);
         assert_eq!(parsed.graph.edges.len(), 1);
+    }
+
+    #[test]
+    fn parse_block_named_nested_group() {
+        // Issue #102: `block:id["Label"] ... end` groups must become
+        // nodes so edges referencing the group id resolve; the inner
+        // nodes are represented by the group node.
+        let input = "block-beta\n  columns 3\n  a b c\n  block:group1[\"Group One\"]\n    d\n    e\n  end\n  f\n  group1 --> f";
+        let parsed = parse_mermaid(input).unwrap();
+        assert_eq!(parsed.graph.kind, DiagramKind::Block);
+        let group = parsed.graph.nodes.get("group1").expect("group1 node");
+        assert_eq!(group.label, "Group One");
+        assert!(!parsed.graph.nodes.contains_key("d"));
+        assert!(!parsed.graph.nodes.contains_key("e"));
+        assert_eq!(parsed.graph.edges.len(), 1);
+        assert_eq!(parsed.graph.edges[0].from, "group1");
+        assert_eq!(parsed.graph.edges[0].to, "f");
+        let block = parsed.graph.block.as_ref().expect("block metadata");
+        let ids: Vec<&str> = block.nodes.iter().map(|n| n.id.as_str()).collect();
+        assert_eq!(ids, ["a", "b", "c", "group1", "f"]);
+    }
+
+    #[test]
+    fn parse_block_unlabeled_nested_group() {
+        let input = "block-beta\n  block:grp\n    x y\n  end\n  z\n  grp --> z";
+        let parsed = parse_mermaid(input).unwrap();
+        assert!(parsed.graph.nodes.contains_key("grp"));
+        assert!(!parsed.graph.nodes.contains_key("x"));
+        assert_eq!(parsed.graph.edges.len(), 1);
+    }
+
+    #[test]
+    fn parse_block_skips_style_directives() {
+        let input = "block-beta\n  a b\n  classDef hot fill:#f00\n  class a hot\n  style b fill:#0f0\n  linkStyle 0 stroke:#00f";
+        let parsed = parse_mermaid(input).unwrap();
+        let block = parsed.graph.block.as_ref().expect("block metadata");
+        let ids: Vec<&str> = block.nodes.iter().map(|n| n.id.as_str()).collect();
+        assert_eq!(ids, ["a", "b"]);
+        assert!(!parsed.graph.nodes.contains_key("classDef"));
+        assert!(!parsed.graph.nodes.contains_key("hot"));
     }
 
     #[test]

@@ -122,13 +122,31 @@ fn check_init_directive(lines: &[&str]) -> Result<(), ParseError> {
     Ok(())
 }
 
-/// Paths 2-3: subgraph / end balance.
+/// Paths 2-3: block / `end` balance, per diagram kind.
 ///
-/// Tracks a stack of `subgraph` opening-line numbers. An `end`
-/// with an empty stack yields [`ParseError::UnexpectedToken`];
-/// a non-empty stack at EOF yields [`ParseError::UnclosedSubgraph`]
-/// with the line of the outermost unclosed opening.
+/// The `end` keyword closes a different opener depending on the
+/// diagram type:
+///
+/// * flowchart / graph: `subgraph ... end`
+/// * sequenceDiagram: `alt` / `opt` / `loop` / `par` / `rect` /
+///   `critical` / `break` / `box` frames
+/// * block-beta: `block:id[...]` nested groups
+///
+/// Only those three families are checked; every other diagram
+/// kind is skipped so their own `end`-like tokens are never
+/// misreported (issue #102). Tracks a stack of opening-line
+/// numbers. An `end` with an empty stack yields
+/// [`ParseError::UnexpectedToken`]; a non-empty stack at EOF
+/// yields [`ParseError::UnclosedSubgraph`] with the line of the
+/// outermost unclosed opening.
 fn check_subgraph_balance(lines: &[&str]) -> Result<(), ParseError> {
+    let kind = detect_balance_kind(lines);
+    let expected = match kind {
+        BalanceKind::Flowchart => "matching subgraph",
+        BalanceKind::Sequence => "matching alt/opt/loop/par/rect/critical/break/box",
+        BalanceKind::Block => "matching block group",
+        BalanceKind::Other => return Ok(()),
+    };
     let mut open_stack: Vec<u32> = Vec::new();
     for (idx, raw) in lines.iter().enumerate() {
         let line_no = u32_from_index(idx);
@@ -136,7 +154,13 @@ fn check_subgraph_balance(lines: &[&str]) -> Result<(), ParseError> {
         if trimmed.is_empty() || trimmed.starts_with("%%") {
             continue;
         }
-        if is_subgraph_open(trimmed) {
+        let opens = match kind {
+            BalanceKind::Flowchart => is_subgraph_open(trimmed),
+            BalanceKind::Sequence => is_sequence_frame_open(trimmed),
+            BalanceKind::Block => is_block_group_open(trimmed),
+            BalanceKind::Other => false,
+        };
+        if opens {
             open_stack.push(line_no);
         } else if is_subgraph_close(trimmed) && open_stack.pop().is_none() {
             let col = col_of_first_nonws(raw);
@@ -144,7 +168,7 @@ fn check_subgraph_balance(lines: &[&str]) -> Result<(), ParseError> {
                 line: line_no,
                 col,
                 found: "end".to_string(),
-                expected: "matching subgraph".to_string(),
+                expected: expected.to_string(),
             });
         }
     }
@@ -154,6 +178,82 @@ fn check_subgraph_balance(lines: &[&str]) -> Result<(), ParseError> {
         });
     }
     Ok(())
+}
+
+/// Diagram families that use the `end` keyword, for the
+/// balance check in [`check_subgraph_balance`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BalanceKind {
+    Flowchart,
+    Sequence,
+    Block,
+    /// Any diagram kind whose grammar does not pair openers with
+    /// a bare `end` keyword; the balance check is skipped.
+    Other,
+}
+
+/// Classify the diagram from its header line (the first
+/// non-empty, non-comment line after any `--- ... ---`
+/// frontmatter block) for `end`-balance purposes.
+fn detect_balance_kind(lines: &[&str]) -> BalanceKind {
+    let mut in_frontmatter = false;
+    let mut seen_any = false;
+    for raw in lines {
+        let t = raw.trim();
+        if t.is_empty() || t.starts_with("%%") {
+            continue;
+        }
+        if t == "---" {
+            if !seen_any {
+                in_frontmatter = true;
+                seen_any = true;
+                continue;
+            }
+            if in_frontmatter {
+                in_frontmatter = false;
+                continue;
+            }
+        }
+        seen_any = true;
+        if in_frontmatter {
+            continue;
+        }
+        let lower = t.to_ascii_lowercase();
+        if lower.starts_with("flowchart") || lower.starts_with("graph") {
+            return BalanceKind::Flowchart;
+        }
+        if lower.starts_with("sequencediagram") {
+            return BalanceKind::Sequence;
+        }
+        if lower.starts_with("block-beta") || lower == "block" || lower.starts_with("block ") {
+            return BalanceKind::Block;
+        }
+        return BalanceKind::Other;
+    }
+    BalanceKind::Other
+}
+
+/// True if the trimmed sequence-diagram line opens a frame
+/// closed by `end` (`alt`, `opt`, `loop`, `par`, `rect`,
+/// `critical`, `break`, `box`), case-insensitive.
+fn is_sequence_frame_open(trimmed: &str) -> bool {
+    const OPENERS: &[&str] = &[
+        "alt", "opt", "loop", "par", "rect", "critical", "break", "box",
+    ];
+    let lower = trimmed.to_ascii_lowercase();
+    OPENERS.iter().any(|kw| {
+        lower == *kw
+            || lower.starts_with(&format!("{kw} "))
+            || lower.starts_with(&format!("{kw}\t"))
+    })
+}
+
+/// True if the trimmed block-beta line opens a nested group
+/// (`block:id`, `block:id["Label"]`, `block:id:2`), which is
+/// closed by `end`.
+fn is_block_group_open(trimmed: &str) -> bool {
+    let lower = trimmed.to_ascii_lowercase();
+    lower.starts_with("block:")
 }
 
 /// Path 4: lines that begin with an arrow operator.
@@ -499,6 +599,63 @@ flowchart LR"#;
             ParseError::UnexpectedToken { found, expected, .. }
                 if found == "end" && expected == "matching subgraph"
         ));
+    }
+
+    // --- Paths 2-3: issue #102, end balance per diagram kind ----------
+
+    #[test]
+    fn sequence_par_alt_loop_opt_frames_pass() {
+        let input = "sequenceDiagram\nparticipant A\nparticipant B\npar one\nA->>B: hello\nand two\nB->>A: hi\nend\nalt yes\nA->>B: ok\nelse no\nB->>A: nope\nend\nloop retry\nA->>B: ping\nend\nopt extra\nB->>A: pong\nend\n";
+        assert!(validate(input).is_ok(), "got {:?}", validate(input).err());
+    }
+
+    #[test]
+    fn sequence_stray_end_is_reported() {
+        let input = "sequenceDiagram\nAlice->>Bob: hi\nend\n";
+        let err = validate(input).unwrap_err();
+        assert!(matches!(
+            err,
+            ParseError::UnexpectedToken { found, .. } if found == "end"
+        ));
+    }
+
+    #[test]
+    fn sequence_unclosed_frame_is_reported() {
+        let input = "sequenceDiagram\nalt yes\nAlice->>Bob: hi\n";
+        let err = validate(input).unwrap_err();
+        assert!(matches!(err, ParseError::UnclosedSubgraph { opened_at: 2 }));
+    }
+
+    #[test]
+    fn block_beta_named_group_end_passes() {
+        let input =
+            "block-beta\ncolumns 3\na b c\nblock:group1[\"Group One\"]\nd\ne\nend\nf\ngroup1 --> f\n";
+        assert!(validate(input).is_ok(), "got {:?}", validate(input).err());
+    }
+
+    #[test]
+    fn block_beta_stray_end_is_reported() {
+        let input = "block-beta\na b\nend\n";
+        let err = validate(input).unwrap_err();
+        assert!(matches!(
+            err,
+            ParseError::UnexpectedToken { found, .. } if found == "end"
+        ));
+    }
+
+    #[test]
+    fn other_diagram_kinds_skip_end_balance() {
+        // `end` is a legal identifier-ish token in other grammars;
+        // the balance check must not fire outside the three
+        // families that use it as a closer.
+        let input = "gantt\ntitle Plan\nsection Build\nend :done, t1, 2024-01-01, 1d\n";
+        assert!(validate(input).is_ok(), "got {:?}", validate(input).err());
+    }
+
+    #[test]
+    fn frontmatter_before_sequence_header_is_skipped() {
+        let input = "---\ntitle: Demo\n---\nsequenceDiagram\npar one\nA->>B: hi\nend\n";
+        assert!(validate(input).is_ok(), "got {:?}", validate(input).err());
     }
 
     // --- Path 4: leading arrow ----------------------------------------
