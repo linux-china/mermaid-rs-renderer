@@ -4,15 +4,17 @@ use crate::config::LayoutConfig;
 use crate::ir::{DiagramKind, Graph};
 
 use super::super::{EdgeLayout, NodeLayout, TextBlock, resolve_edge_style};
+use super::super::types::SubgraphLayout;
 use super::path_cleanup::{
-    deoverlap_flowchart_paths, detour_flowchart_paths_around_non_endpoint_nodes,
-    reduce_orthogonal_path_crossings, simplify_flowchart_axis_oscillations,
-    simplify_flowchart_detour_rectangles,
+    deoverlap_flowchart_paths, detour_flowchart_paths_around_foreign_subgraphs,
+    detour_flowchart_paths_around_non_endpoint_nodes, reduce_orthogonal_path_crossings,
+    simplify_flowchart_axis_oscillations, simplify_flowchart_detour_rectangles,
 };
 
 pub(in crate::layout) fn apply_edge_path_cleanup(
     graph: &Graph,
     nodes: &BTreeMap<String, NodeLayout>,
+    subgraphs: &[SubgraphLayout],
     routed_points: &mut [Vec<(f32, f32)>],
     config: &LayoutConfig,
 ) {
@@ -22,6 +24,13 @@ pub(in crate::layout) fn apply_edge_path_cleanup(
         simplify_flowchart_detour_rectangles(graph, nodes, routed_points);
         simplify_flowchart_axis_oscillations(routed_points);
         detour_flowchart_paths_around_non_endpoint_nodes(graph, nodes, routed_points, config);
+        detour_flowchart_paths_around_foreign_subgraphs(
+            graph,
+            nodes,
+            subgraphs,
+            routed_points,
+            config,
+        );
         simplify_flowchart_axis_oscillations(routed_points);
     } else if matches!(
         graph.kind,

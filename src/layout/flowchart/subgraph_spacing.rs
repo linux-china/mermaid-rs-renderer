@@ -7,8 +7,8 @@ use crate::theme::Theme;
 
 use super::super::routing::is_horizontal;
 use super::super::{
-    MIN_NODE_SPACING_FLOOR, NodeLayout, SUBGRAPH_DESIRED_GAP_RATIO, measure_label,
-    subgraph_anchor_id, subgraph_padding_from_label, top_level_subgraph_indices,
+    MIN_NODE_SPACING_FLOOR, NodeLayout, SUBGRAPH_DESIRED_GAP_RATIO, build_subgraph_layouts,
+    measure_label, subgraph_anchor_id, subgraph_padding_from_label, top_level_subgraph_indices,
 };
 
 fn is_region_subgraph(sub: &crate::ir::Subgraph) -> bool {
@@ -41,7 +41,125 @@ pub(in crate::layout) fn apply_flowchart_node_layout_cleanup(
     separate_sibling_subgraphs(graph, nodes, theme, config);
     align_single_entry_top_level_subgraphs(graph, nodes, config);
     align_disconnected_top_level_subgraphs(graph, nodes);
+    evict_non_member_nodes_from_subgraphs(graph, nodes, theme, config);
     debug_assert_flowchart_node_layout_invariants(graph, nodes);
+}
+
+/// Push nodes that belong to no subgraph (or to a different subgraph chain)
+/// out of subgraph boxes they visually landed in. A non-member node rendered
+/// inside a subgraph box misstates containment semantics, which is worse than
+/// slightly longer edges.
+pub(in crate::layout) fn evict_non_member_nodes_from_subgraphs(
+    graph: &Graph,
+    nodes: &mut BTreeMap<String, NodeLayout>,
+    theme: &Theme,
+    config: &LayoutConfig,
+) {
+    if graph.kind != crate::ir::DiagramKind::Flowchart || graph.subgraphs.is_empty() {
+        return;
+    }
+
+    let horizontal = is_horizontal(graph.direction);
+    let clearance = (config.node_spacing * 0.5).max(MIN_NODE_SPACING_FLOOR);
+
+    // Materialize subgraph rects exactly the way rendering will (including
+    // nested-child expansion), so eviction sees the true boxes.
+    let compute_rects = |nodes: &BTreeMap<String, NodeLayout>| -> Vec<[f32; 4]> {
+        build_subgraph_layouts(graph, nodes, theme, config)
+            .into_iter()
+            .filter(|sub| sub.width > 0.0 && sub.height > 0.0)
+            .map(|sub| [sub.x, sub.y, sub.x + sub.width, sub.y + sub.height])
+            .collect()
+    };
+
+    // Only move nodes that are members of no subgraph: nodes in *other*
+    // subgraphs are handled by the sibling-separation pass, and moving them
+    // here would tear their own box apart.
+    let mut all_members: HashSet<&str> = HashSet::new();
+    for sub in &graph.subgraphs {
+        for node_id in &sub.nodes {
+            all_members.insert(node_id.as_str());
+        }
+    }
+    let free_ids: Vec<String> = nodes
+        .values()
+        .filter(|node| !node.hidden && node.anchor_subgraph.is_none())
+        .filter(|node| !all_members.contains(node.id.as_str()))
+        .map(|node| node.id.clone())
+        .collect();
+    if free_ids.is_empty() {
+        return;
+    }
+
+    for _ in 0..4 {
+        let rects = compute_rects(nodes);
+        let mut moved = false;
+        for id in &free_ids {
+            let Some(node) = nodes.get(id) else {
+                continue;
+            };
+            let nx1 = node.x;
+            let ny1 = node.y;
+            let nx2 = node.x + node.width;
+            let ny2 = node.y + node.height;
+            let overlaps_any = |x1: f32, y1: f32, x2: f32, y2: f32| -> usize {
+                rects
+                    .iter()
+                    .filter(|[rx1, ry1, rx2, ry2]| {
+                        x2.min(*rx2) - x1.max(*rx1) > 0.0 && y2.min(*ry2) - y1.max(*ry1) > 0.0
+                    })
+                    .count()
+            };
+            if overlaps_any(nx1, ny1, nx2, ny2) == 0 {
+                continue;
+            }
+            // Candidate pushes: escape each overlapped rect on all four
+            // sides, then pick the candidate that clears the most boxes with
+            // the least displacement (cross-axis moves preferred slightly).
+            let mut best: Option<(usize, f32, f32, f32)> = None;
+            for [rx1, ry1, rx2, ry2] in &rects {
+                let overlap_x = nx2.min(*rx2) - nx1.max(*rx1);
+                let overlap_y = ny2.min(*ry2) - ny1.max(*ry1);
+                if overlap_x <= 0.0 || overlap_y <= 0.0 {
+                    continue;
+                }
+                let candidates = [
+                    (-(nx2 - rx1 + clearance), 0.0),
+                    (rx2 - nx1 + clearance, 0.0),
+                    (0.0, -(ny2 - ry1 + clearance)),
+                    (0.0, ry2 - ny1 + clearance),
+                ];
+                for (dx, dy) in candidates {
+                    let remaining = overlaps_any(nx1 + dx, ny1 + dy, nx2 + dx, ny2 + dy);
+                    let displacement = dx.abs() + dy.abs();
+                    // Cross-axis moves keep rank ordering intact; give
+                    // main-axis moves a mild penalty rather than a veto.
+                    let main_axis_move = if horizontal { dx != 0.0 } else { dy != 0.0 };
+                    let score = displacement * if main_axis_move { 1.25 } else { 1.0 };
+                    let better = match &best {
+                        None => true,
+                        Some((best_remaining, best_score, _, _)) => {
+                            remaining < *best_remaining
+                                || (remaining == *best_remaining && score < *best_score)
+                        }
+                    };
+                    if better {
+                        best = Some((remaining, score, dx, dy));
+                    }
+                }
+            }
+            if let Some((_, _, dx, dy)) = best
+                && let Some(node) = nodes.get_mut(id)
+            {
+                node.x += dx;
+                node.y += dy;
+                moved = true;
+            }
+        }
+        if !moved {
+            break;
+        }
+    }
 }
 
 pub(in crate::layout) fn debug_assert_flowchart_node_layout_invariants(

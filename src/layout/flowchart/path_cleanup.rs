@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 use crate::config::LayoutConfig;
 use crate::ir::Graph;
@@ -13,6 +13,7 @@ use super::super::routing::{
     Obstacle, Segment, collinear_overlap_length, compress_path, edge_crossings_with_existing,
     path_bend_count, path_length, segment_intersects_rect,
 };
+use super::super::types::SubgraphLayout;
 
 fn flowchart_path_overlap_with_prior(path: &[(f32, f32)], prior: &[Vec<(f32, f32)>]) -> f32 {
     let mut overlap = 0.0f32;
@@ -641,6 +642,147 @@ pub(in crate::layout) fn detour_flowchart_paths_around_non_endpoint_nodes(
                     let cost =
                         path_length(&candidate) + path_bend_count(&candidate) as f32 * clearance;
                     if cost < best_cost {
+                        best_cost = cost;
+                        best = Some(candidate);
+                    }
+                }
+            }
+            let Some(candidate) = best else {
+                break;
+            };
+            *points = candidate;
+        }
+    }
+}
+
+/// Subgraph rects an edge must stay out of: every subgraph that contains
+/// neither endpoint of the edge (and is not an ancestor chain member of an
+/// anchored endpoint).
+fn foreign_subgraph_obstacles(
+    edge_from: &str,
+    edge_to: &str,
+    subgraphs: &[SubgraphLayout],
+    clearance: f32,
+) -> Vec<Obstacle> {
+    let mut obstacles = Vec::new();
+    for sub in subgraphs {
+        let members: HashSet<&str> = sub.nodes.iter().map(|s| s.as_str()).collect();
+        if members.contains(edge_from) || members.contains(edge_to) {
+            continue;
+        }
+        // Cluster-attached edges (composite states / subgraph anchors) use
+        // the subgraph label as the endpoint id.
+        if sub.label == edge_from || sub.label == edge_to {
+            continue;
+        }
+        if sub.width <= 0.0 || sub.height <= 0.0 {
+            continue;
+        }
+        obstacles.push(Obstacle {
+            id: format!("subgraph:{}", sub.label),
+            x: sub.x - clearance,
+            y: sub.y - clearance,
+            width: sub.width + clearance * 2.0,
+            height: sub.height + clearance * 2.0,
+            members: None,
+        });
+    }
+    obstacles
+}
+
+fn path_foreign_subgraph_hits(path: &[(f32, f32)], obstacles: &[Obstacle]) -> usize {
+    let mut hits = 0usize;
+    for obstacle in obstacles {
+        let mut hit = false;
+        for segment in path.windows(2) {
+            if segment_intersects_rect(segment[0], segment[1], obstacle) {
+                hit = true;
+                break;
+            }
+        }
+        if hit {
+            hits += 1;
+        }
+    }
+    hits
+}
+
+fn first_foreign_subgraph_hit(
+    path: &[(f32, f32)],
+    obstacles: &[Obstacle],
+) -> Option<(usize, usize, Obstacle)> {
+    for (seg_idx, segment) in path.windows(2).enumerate() {
+        for obstacle in obstacles {
+            if segment_intersects_rect(segment[0], segment[1], obstacle) {
+                let mut last_idx = seg_idx;
+                for (later_idx, later_segment) in path.windows(2).enumerate().skip(seg_idx) {
+                    if segment_intersects_rect(later_segment[0], later_segment[1], obstacle) {
+                        last_idx = later_idx;
+                    }
+                }
+                return Some((seg_idx, last_idx, obstacle.clone()));
+            }
+        }
+    }
+    None
+}
+
+/// Reroute edges that cut through subgraph boxes they have no business in.
+/// Runs after node-level detours; treats each foreign subgraph rect as a hard
+/// obstacle and prefers detours that clear them without introducing new node
+/// hits.
+pub(in crate::layout) fn detour_flowchart_paths_around_foreign_subgraphs(
+    graph: &Graph,
+    nodes: &BTreeMap<String, NodeLayout>,
+    subgraphs: &[SubgraphLayout],
+    routed_points: &mut [Vec<(f32, f32)>],
+    config: &LayoutConfig,
+) {
+    if subgraphs.is_empty() {
+        return;
+    }
+    let clearance = (config.node_spacing * 0.12).max(8.0);
+    for (idx, points) in routed_points.iter_mut().enumerate() {
+        let Some(edge) = graph.edges.get(idx) else {
+            continue;
+        };
+        if edge.from == edge.to {
+            continue;
+        }
+        let obstacles = foreign_subgraph_obstacles(&edge.from, &edge.to, subgraphs, 0.0);
+        if obstacles.is_empty() {
+            continue;
+        }
+        for _ in 0..6 {
+            let Some((first_seg_idx, last_seg_idx, obstacle)) =
+                first_foreign_subgraph_hit(points, &obstacles)
+            else {
+                break;
+            };
+            let current_node_hits =
+                flowchart_path_non_endpoint_hit_count(points, &edge.from, &edge.to, nodes);
+            let current_sub_hits = path_foreign_subgraph_hits(points, &obstacles);
+            let mut best: Option<Vec<(f32, f32)>> = None;
+            let mut best_cost = f32::INFINITY;
+            let mut best_hits = (current_sub_hits, current_node_hits);
+            for clearance_scale in [1.0f32, 1.5, 2.0, 3.0] {
+                let candidate_clearance = clearance * clearance_scale;
+                for candidate in node_detour_candidates(
+                    points,
+                    first_seg_idx,
+                    last_seg_idx,
+                    &obstacle,
+                    candidate_clearance,
+                ) {
+                    let sub_hits = path_foreign_subgraph_hits(&candidate, &obstacles);
+                    let node_hits = flowchart_path_non_endpoint_hit_count(
+                        &candidate, &edge.from, &edge.to, nodes,
+                    );
+                    let hits = (sub_hits, node_hits);
+                    let cost = path_length(&candidate)
+                        + path_bend_count(&candidate) as f32 * candidate_clearance;
+                    if hits < best_hits || (hits == best_hits && cost < best_cost) {
+                        best_hits = hits;
                         best_cost = cost;
                         best = Some(candidate);
                     }

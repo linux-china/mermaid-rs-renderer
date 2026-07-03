@@ -665,6 +665,11 @@ fn compute_flowchart_layout(
     // keep sibling regions visually distinct.
     flowchart::subgraph_spacing::enforce_top_level_subgraph_gap(graph, &mut nodes, theme, config);
     flowchart::subgraph_spacing::separate_sibling_subgraphs(graph, &mut nodes, theme, config);
+    // Visual-objective and gap passes can pull free nodes back inside
+    // subgraph boxes; evict again right before boxes are materialized.
+    flowchart::subgraph_spacing::evict_non_member_nodes_from_subgraphs(
+        graph, &mut nodes, theme, config,
+    );
     flowchart::subgraph_spacing::debug_assert_flowchart_node_layout_invariants(graph, &nodes);
 
     // For state diagrams, push non-member nodes outside subgraph bounds

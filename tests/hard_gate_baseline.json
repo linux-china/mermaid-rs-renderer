@@ -1,10 +1,4 @@
 {
   "_comment": "Known hard-gate RED fixtures; gate fails on new reds or worse counts vs this baseline. Lower is better.",
-  "fixtures": {
-    "benches/fixtures/flowchart_component_packing": 1,
-    "benches/fixtures/flowchart_mega_crosslane_subgraphs": 1,
-    "benches/fixtures/flowchart_mega_event_mesh": 8,
-    "benches/fixtures/flowchart_mega_nested_regions": 9,
-    "benches/fixtures/flowchart_path_occlusion_maze": 1
-  }
+  "fixtures": {}
 }

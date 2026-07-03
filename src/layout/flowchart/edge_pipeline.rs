@@ -2833,7 +2833,7 @@ pub(in crate::layout) fn build_routed_edges(ctx: RoutedEdgeBuildContext<'_>) -> 
         );
     }
 
-    post_route::apply_edge_path_cleanup(graph, nodes, &mut routed_points, config);
+    post_route::apply_edge_path_cleanup(graph, nodes, subgraphs, &mut routed_points, config);
 
     if route_labels_via {
         for idx in 0..routed_points.len() {
@@ -2904,6 +2904,16 @@ pub(in crate::layout) fn build_routed_edges(ctx: RoutedEdgeBuildContext<'_>) -> 
             &mut routed_points,
         );
         path_cleanup::repair_flowchart_endpoint_reentries(graph, nodes, &mut routed_points, config);
+        // Final containment pass: later label/endpoint repairs may have
+        // dragged paths back through foreign subgraph boxes.
+        path_cleanup::detour_flowchart_paths_around_foreign_subgraphs(
+            graph,
+            nodes,
+            subgraphs,
+            &mut routed_points,
+            config,
+        );
+        path_cleanup::simplify_flowchart_axis_oscillations(&mut routed_points);
     }
     #[cfg(debug_assertions)]
     if graph.kind == DiagramKind::Flowchart {
