@@ -46,6 +46,22 @@ pub struct EdgeDump {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub arrow_end_kind: Option<String>,
     pub points: Vec<[f32; 2]>,
+    /// Center of the edge's main label, when the edge has one. Together with
+    /// `label_width`/`label_height` this describes the label rectangle that
+    /// external metric tooling can use to measure label/edge proximity and
+    /// label overlap without re-deriving placement.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub label_anchor: Option<[f32; 2]>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub label_width: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub label_height: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub label_lines: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub start_label_anchor: Option<[f32; 2]>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub end_label_anchor: Option<[f32; 2]>,
 }
 
 #[derive(Debug, Serialize)]
@@ -92,6 +108,12 @@ impl LayoutDump {
                 arrow_start_kind: edge.arrow_start_kind.map(|k| format!("{k:?}")),
                 arrow_end_kind: edge.arrow_end_kind.map(|k| format!("{k:?}")),
                 points: edge.points.iter().map(|(x, y)| [*x, *y]).collect(),
+                label_anchor: edge.label_anchor.map(|(x, y)| [x, y]),
+                label_width: edge.label.as_ref().map(|l| l.width),
+                label_height: edge.label.as_ref().map(|l| l.height),
+                label_lines: edge.label.as_ref().map(|l| l.lines.clone()),
+                start_label_anchor: edge.start_label_anchor.map(|(x, y)| [x, y]),
+                end_label_anchor: edge.end_label_anchor.map(|(x, y)| [x, y]),
             })
             .collect();
 
