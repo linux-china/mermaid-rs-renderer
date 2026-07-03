@@ -56,6 +56,11 @@ HARD_METRIC_KINDS = {
     "edge_node_crossings": GRAPH_KINDS,
     "endpoint_off_boundary_count": GRAPH_KINDS,
     "subgraph_boundary_intrusion_pairs": GRAPH_KINDS,
+    # Semantic containment: nodes rendered inside subgraph boxes they don't
+    # belong to, or member nodes spilling outside their own box. Both
+    # misstate the diagram's declared structure.
+    "containment_foreign_node_count": GRAPH_KINDS,
+    "containment_member_escape_count": GRAPH_KINDS,
     # non_finite is universal: no diagram may emit a NaN/Inf coordinate.
     "non_finite": None,
 }

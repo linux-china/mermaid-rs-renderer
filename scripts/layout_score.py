@@ -730,6 +730,50 @@ def compute_metrics(data, nodes, edges):
     parallel_edge_overlap_ratios = []
     parallel_edge_separations = []
 
+    # Semantic containment: a node's rendered box must not sit inside a
+    # subgraph box it is not a member of (foreign containment), and a member
+    # node must not spill outside its own subgraph box (member escape).
+    # Both misstate the declared containment structure of the diagram.
+    containment_foreign_node_count = 0
+    containment_member_escape_count = 0
+    containment_overlap_area = 0.0
+    if subgraph_rects:
+        raw_subgraphs = data.get("subgraphs", []) or []
+        anchor_names = set()
+        for subgraph in raw_subgraphs:
+            for key in ("id", "label"):
+                value = subgraph.get(key)
+                if value:
+                    anchor_names.add(str(value))
+        for node in nodes.values():
+            node_id = str(node.get("id"))
+            if node_id in anchor_names:
+                continue
+            try:
+                nx1 = float(node["x"])
+                ny1 = float(node["y"])
+                nx2 = nx1 + float(node["width"])
+                ny2 = ny1 + float(node["height"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            node_area = max(nx2 - nx1, 0.0) * max(ny2 - ny1, 0.0)
+            for member_nodes, (rx, ry, rw, rh) in subgraph_rects:
+                ox = min(nx2, rx + rw) - max(nx1, rx)
+                oy = min(ny2, ry + rh) - max(ny1, ry)
+                overlap = max(ox, 0.0) * max(oy, 0.0)
+                is_member = node_id in member_nodes
+                if is_member:
+                    # Member escape: meaningful part of the node outside its box.
+                    if node_area > 0.0 and overlap < node_area * 0.995:
+                        containment_member_escape_count += 1
+                        containment_overlap_area += node_area - overlap
+                else:
+                    # Foreign containment: meaningful overlap with a box the
+                    # node does not belong to (2px sliver tolerance).
+                    if overlap > 4.0 and ox > 2.0 and oy > 2.0:
+                        containment_foreign_node_count += 1
+                        containment_overlap_area += overlap
+
     for idx, edge in enumerate(edges):
         points = [tuple(p) for p in edge.get("points", [])]
         edge_points.append(points)
@@ -1274,6 +1318,9 @@ def compute_metrics(data, nodes, edges):
         "margin_imbalance_ratio": margin_imbalance_ratio,
         "node_overlap_count": overlap_count,
         "node_overlap_area": overlap_area,
+        "containment_foreign_node_count": containment_foreign_node_count,
+        "containment_member_escape_count": containment_member_escape_count,
+        "containment_overlap_area": containment_overlap_area,
     }
 
 
