@@ -1,4 +1,5 @@
 pub(super) mod analysis;
+pub(super) mod aspect_fold;
 pub(super) mod edge_pipeline;
 pub(super) mod finalize;
 pub(super) mod manual_layout;

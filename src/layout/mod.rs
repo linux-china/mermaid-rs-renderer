@@ -634,7 +634,7 @@ fn compute_flowchart_layout(
         .collect();
 
     let mut label_dummy_ids: Vec<Option<String>> = vec![None; graph.edges.len()];
-    flowchart::manual_layout::assign_positions_manual(
+    let rank_info = flowchart::manual_layout::assign_positions_manual(
         graph,
         &layout_node_ids,
         &layout_set,
@@ -644,6 +644,19 @@ fn compute_flowchart_layout(
         theme,
         &edge_route_labels,
         &mut label_dummy_ids,
+    );
+
+    // Opt-in aspect-ratio goal: fold over-wide flowcharts into serpentine
+    // bands before the downstream passes see the geometry. No-op unless
+    // `preferred_aspect_ratio` is set and the fold is scored as an
+    // improvement; the stretch pass in `apply_preferred_aspect_ratio_layout`
+    // remains the residual refiner either way.
+    let fold_outcome = flowchart::aspect_fold::apply_aspect_ratio_band_fold(
+        graph,
+        &rank_info,
+        &layout_edges,
+        &mut nodes,
+        config,
     );
 
     apply_subgraph_node_layout_passes(graph, &mut nodes, config, &anchored_indices, &anchor_info);
@@ -657,6 +670,7 @@ fn compute_flowchart_layout(
         &mut nodes,
         theme,
         &effective_config,
+        fold_outcome.is_some(),
     );
     apply_subgraph_direction_overrides(graph, &mut nodes, config, &anchored_indices);
     // Objective and direction passes can shift whole top-level groups after the

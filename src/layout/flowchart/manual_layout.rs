@@ -245,6 +245,19 @@ fn build_ordering_edges(
     ordering_edges
 }
 
+/// Ordered rank buckets produced by [`assign_positions_manual`], exposed so
+/// later passes (e.g. the aspect-ratio band fold) can reuse the exact rank
+/// structure instead of re-deriving it.
+///
+/// Buckets are in main-axis order and each bucket is in cross-axis order as
+/// established by `order_rank_nodes`. Buckets may contain ordering-dummy ids
+/// (`__dummy_*__`) that have no `NodeLayout` entry; consumers must skip ids
+/// missing from the node map.
+#[derive(Debug, Default)]
+pub(in crate::layout) struct ManualLayoutRanks {
+    pub(in crate::layout) rank_nodes: Vec<Vec<String>>,
+}
+
 pub(in crate::layout) fn assign_positions_manual(
     graph: &Graph,
     layout_node_ids: &[String],
@@ -255,7 +268,7 @@ pub(in crate::layout) fn assign_positions_manual(
     theme: &Theme,
     pre_measured_labels: &[Option<TextBlock>],
     label_dummy_ids: &mut [Option<String>],
-) {
+) -> ManualLayoutRanks {
     let mut edge_labels_vec: Vec<Option<TextBlock>> = Vec::new();
     let mut original_edge_indices: Vec<usize> = Vec::new();
     let layout_edges: Vec<crate::ir::Edge> = layout_edges
@@ -716,6 +729,9 @@ pub(in crate::layout) fn assign_positions_manual(
             place_rank(rank_idx, false, nodes);
         }
     }
+    drop(place_rank);
+
+    ManualLayoutRanks { rank_nodes }
 }
 
 #[cfg(test)]

@@ -18,11 +18,17 @@ pub(in crate::layout) fn apply_visual_objectives(
     nodes: &mut BTreeMap<String, NodeLayout>,
     theme: &Theme,
     config: &LayoutConfig,
+    skip_whitespace_compaction: bool,
 ) {
     if !config.flowchart.objective.enabled {
         return;
     }
-    compact_large_flowchart_whitespace(graph, nodes, config);
+    // The whitespace compactor shifts nodes along the main axis per
+    // cross-axis band, which would deform the serpentine bands produced by
+    // the aspect-ratio fold; skip it when a fold was applied.
+    if !skip_whitespace_compaction {
+        compact_large_flowchart_whitespace(graph, nodes, config);
+    }
     relax_edge_span_constraints(graph, layout_edges, nodes, theme, config);
     rebalance_top_level_subgraphs_aspect(graph, nodes, config);
     let overlap_pass_enabled = match graph.kind {
