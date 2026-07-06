@@ -1,11 +1,17 @@
 //! Opt-in serpentine "band fold" for flowchart aspect-ratio goals.
 //!
-//! When `LayoutConfig::preferred_aspect_ratio` is set and a subgraph-free
-//! horizontal flowchart lays out much wider than the goal, this pass folds the
+//! When `LayoutConfig::preferred_aspect_ratio` is set and a horizontal
+//! flowchart lays out much wider than the goal, this pass folds the
 //! monotonic main axis into 2..=4 serpentine bands at rank boundaries, the way
 //! text wraps into lines. Odd bands are mirrored so consecutive ranks that
 //! straddle a band boundary stay on the same side and the wrap edge becomes a
 //! short hop instead of a full-width return.
+//!
+//! Subgraphs are atomic: the rank span covered by each subgraph's members is
+//! merged into a single unbreakable run, and band boundaries are only placed
+//! between those runs. A diagram whose subgraph spans every rank therefore
+//! never folds. Subgraph boxes themselves are materialized downstream from
+//! the folded node positions, so they shrink to fit their band.
 //!
 //! The fold is best-effort and scored: every candidate band count is applied
 //! to a cloned node map and accepted only if the log-aspect error improves by
@@ -82,9 +88,6 @@ pub(in crate::layout) fn apply_aspect_ratio_band_fold(
     if graph.kind != DiagramKind::Flowchart {
         return None;
     }
-    if !graph.subgraphs.is_empty() {
-        return None;
-    }
     if !is_horizontal(graph.direction) {
         return None;
     }
@@ -108,6 +111,12 @@ pub(in crate::layout) fn apply_aspect_ratio_band_fold(
     }
 
     let extents = rank_extents(&ranks, nodes);
+    let allowed_boundaries = subgraph_safe_boundaries(graph, &ranks);
+    // If no interior rank boundary is safe (e.g. one subgraph spans every
+    // rank), folding is impossible.
+    if !allowed_boundaries.iter().skip(1).any(|allowed| *allowed) {
+        return None;
+    }
     let gutter = config.rank_spacing.max(config.node_spacing) * WRAP_GUTTER_FACTOR;
     let baseline = FoldScore {
         aspect_error: layout_aspect_error(nodes, goal)?,
@@ -117,7 +126,7 @@ pub(in crate::layout) fn apply_aspect_ratio_band_fold(
     let mut best: Option<(FoldScore, usize, BTreeMap<String, NodeLayout>, HashMap<String, usize>)> =
         None;
     for band_count in candidate_band_counts(natural_ratio, goal, ranks.len()) {
-        let ranges = plan_band_ranges(&extents, band_count);
+        let ranges = plan_band_ranges(&extents, band_count, &allowed_boundaries);
         if ranges.len() != band_count {
             continue;
         }
@@ -286,10 +295,58 @@ fn rank_extents(ranks: &[Vec<String>], nodes: &BTreeMap<String, NodeLayout>) -> 
         .collect()
 }
 
+/// Boundary mask over rank indices: `mask[idx]` is true when a band may
+/// start at rank `idx`, i.e. the boundary between `idx - 1` and `idx` does
+/// not split any subgraph's rank span. Subgraphs are atomic: a band boundary
+/// inside one would tear its box across bands. The subgraph anchor node
+/// (a node named after the subgraph id used for edges to the subgraph) is
+/// treated as a member for span purposes.
+fn subgraph_safe_boundaries(graph: &Graph, ranks: &[Vec<String>]) -> Vec<bool> {
+    let mut allowed = vec![true; ranks.len()];
+    let mut node_rank: HashMap<&str, usize> = HashMap::new();
+    for (idx, bucket) in ranks.iter().enumerate() {
+        for id in bucket {
+            node_rank.insert(id.as_str(), idx);
+        }
+    }
+    for sub in &graph.subgraphs {
+        let member_ranks = sub
+            .nodes
+            .iter()
+            .map(String::as_str)
+            .chain(sub.id.as_deref())
+            .filter_map(|id| node_rank.get(id).copied());
+        let mut min_rank = usize::MAX;
+        let mut max_rank = 0usize;
+        for rank in member_ranks {
+            min_rank = min_rank.min(rank);
+            max_rank = max_rank.max(rank);
+        }
+        if min_rank == usize::MAX {
+            continue;
+        }
+        for flag in allowed
+            .iter_mut()
+            .take(max_rank + 1)
+            .skip(min_rank + 1)
+        {
+            *flag = false;
+        }
+    }
+    allowed
+}
+
 /// Partition ranks into `band_count` contiguous runs with roughly balanced
 /// main-axis spans. Ranks are atomic: fold boundaries are rank boundaries.
-/// Every band is guaranteed at least one rank.
-fn plan_band_ranges(extents: &[RankExtent], band_count: usize) -> Vec<Range<usize>> {
+/// Band boundaries are further restricted to `allowed_boundaries` (subgraph
+/// spans must not be split). Every band is guaranteed at least one rank; if
+/// the boundary mask cannot support `band_count` bands the result has fewer
+/// ranges and the caller rejects it.
+fn plan_band_ranges(
+    extents: &[RankExtent],
+    band_count: usize,
+    allowed_boundaries: &[bool],
+) -> Vec<Range<usize>> {
     let rank_count = extents.len();
     if band_count < 2 || band_count > rank_count {
         return Vec::new();
@@ -298,7 +355,10 @@ fn plan_band_ranges(extents: &[RankExtent], band_count: usize) -> Vec<Range<usiz
     let target = total_span / band_count as f32;
     let mut ranges: Vec<Range<usize>> = Vec::with_capacity(band_count);
     let mut start = 0usize;
-    for idx in 0..rank_count {
+    for idx in 1..rank_count {
+        if !allowed_boundaries.get(idx).copied().unwrap_or(true) {
+            continue;
+        }
         if idx == start {
             continue;
         }
@@ -306,10 +366,13 @@ fn plan_band_ranges(extents: &[RankExtent], band_count: usize) -> Vec<Range<usiz
         if bands_left <= 1 {
             break;
         }
-        let ranks_after_idx = rank_count - idx;
-        // Close before `idx` when the ranks from `idx` onward are exactly
-        // enough to give every remaining band one rank.
-        let must_close = ranks_after_idx == bands_left - 1;
+        // Allowed boundaries strictly after `idx`. Closing at `idx` leaves
+        // `bands_left - 2` more closures to place among them, so `idx` is the
+        // last chance once they run down to that count.
+        let boundaries_after = (idx + 1..rank_count)
+            .filter(|next| allowed_boundaries.get(*next).copied().unwrap_or(true))
+            .count();
+        let must_close = boundaries_after < bands_left - 1;
         let span_with_idx = extents[idx].main_end - extents[start].main_start;
         let over_budget = span_with_idx > target * BAND_WIDTH_SLACK;
         if must_close || over_budget {
@@ -559,8 +622,46 @@ mod tests {
                 main_end: idx as f32 * 100.0 + 60.0,
             })
             .collect();
-        let ranges = plan_band_ranges(&extents, 3);
+        let ranges = plan_band_ranges(&extents, 3, &vec![true; extents.len()]);
         assert_eq!(ranges, vec![0..2, 2..4, 4..6]);
+    }
+
+    #[test]
+    fn plan_bands_respects_blocked_boundaries() {
+        // 6 equal-width ranks, but boundaries at 2 and 3 are blocked by a
+        // subgraph spanning ranks 1..=3. The 3-band split must move its
+        // boundaries to allowed positions (1 and 4).
+        let extents: Vec<RankExtent> = (0..6)
+            .map(|idx| RankExtent {
+                main_start: idx as f32 * 100.0,
+                main_end: idx as f32 * 100.0 + 60.0,
+            })
+            .collect();
+        let allowed = vec![true, true, false, false, true, true];
+        let ranges = plan_band_ranges(&extents, 3, &allowed);
+        assert_eq!(ranges.len(), 3);
+        for range in &ranges[1..] {
+            assert!(
+                allowed[range.start],
+                "band boundary at blocked rank {}",
+                range.start
+            );
+        }
+    }
+
+    #[test]
+    fn plan_bands_returns_short_when_boundaries_insufficient() {
+        let extents: Vec<RankExtent> = (0..6)
+            .map(|idx| RankExtent {
+                main_start: idx as f32 * 100.0,
+                main_end: idx as f32 * 100.0 + 60.0,
+            })
+            .collect();
+        // Only one interior boundary allowed: a 3-band plan is impossible
+        // and the caller must see fewer ranges than requested.
+        let allowed = vec![true, false, false, true, false, false];
+        let ranges = plan_band_ranges(&extents, 3, &allowed);
+        assert!(ranges.len() < 3, "got {ranges:?}");
     }
 
     #[test]
@@ -576,7 +677,7 @@ mod tests {
                 main_end: 980.0 + idx as f32 * 50.0,
             });
         }
-        let ranges = plan_band_ranges(&extents, 4);
+        let ranges = plan_band_ranges(&extents, 4, &vec![true; extents.len()]);
         assert_eq!(ranges.len(), 4);
         assert!(ranges.iter().all(|range| !range.is_empty()));
         assert_eq!(ranges.last().unwrap().end, extents.len());
@@ -695,12 +796,46 @@ mod tests {
     }
 
     #[test]
-    fn fold_skipped_with_subgraphs() {
+    fn fold_keeps_subgraph_members_in_one_band() {
+        // Subgraph over A..D spans ranks 0..=3, so the only allowed interior
+        // boundary is at rank 4 (E). The fold must still fire and must keep
+        // all subgraph members in one band.
         let (mut graph, rank_info, edges, mut nodes) = chain_fixture();
         graph.subgraphs.push(crate::ir::Subgraph {
             id: Some("sg".to_string()),
             label: "sg".to_string(),
-            nodes: vec!["A".to_string(), "B".to_string()],
+            nodes: vec![
+                "A".to_string(),
+                "B".to_string(),
+                "C".to_string(),
+                "D".to_string(),
+            ],
+            direction: None,
+            icon: None,
+        });
+        let config = config_with_goal(Some(GOAL_4_3));
+        let outcome = apply_aspect_ratio_band_fold(&graph, &rank_info, &edges, &mut nodes, &config)
+            .expect("wide chain with a partial subgraph should still fold");
+        let member_bands: Vec<usize> = ["A", "B", "C", "D"]
+            .iter()
+            .map(|id| outcome.node_bands[*id])
+            .collect();
+        assert!(
+            member_bands.iter().all(|band| *band == member_bands[0]),
+            "subgraph members split across bands: {member_bands:?}"
+        );
+    }
+
+    #[test]
+    fn fold_skipped_when_subgraph_spans_all_ranks() {
+        let (mut graph, rank_info, edges, mut nodes) = chain_fixture();
+        graph.subgraphs.push(crate::ir::Subgraph {
+            id: Some("sg".to_string()),
+            label: "sg".to_string(),
+            nodes: ["A", "B", "C", "D", "E", "F"]
+                .iter()
+                .map(|id| (*id).to_string())
+                .collect(),
             direction: None,
             icon: None,
         });
