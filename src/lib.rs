@@ -104,7 +104,7 @@ pub(crate) mod unicode_width;
 pub mod validator;
 
 // Re-export commonly used types at crate root for ergonomic library usage
-pub use config::{Config, LayoutConfig, RenderConfig};
+pub use config::{Config, LayoutConfig, RenderConfig, merge_init_config};
 pub use error::ParseError;
 pub use ir::{
     DiagramKind, Direction, Edge, EdgeArrowhead, EdgeDecoration, EdgeStyle, Graph, Node, NodeLink,
@@ -221,9 +221,35 @@ pub fn render(input: &str) -> anyhow::Result<String> {
 /// ```
 pub fn render_with_options(input: &str, options: RenderOptions) -> anyhow::Result<String> {
     let parsed = parse_mermaid_strict(input)?;
-    let layout = compute_layout(&parsed.graph, &options.theme, &options.layout);
-    let svg = render_svg(&layout, &options.theme, &options.layout);
+    let (theme, layout_cfg) = resolve_options(options, parsed.init_config);
+    let layout = compute_layout(&parsed.graph, &theme, &layout_cfg);
+    let svg = render_svg(&layout, &theme, &layout_cfg);
     Ok(svg)
+}
+
+/// Apply a diagram's `%%{init: ...}%%` directive (if any) on top of the
+/// caller-provided [`RenderOptions`], returning the effective theme and
+/// layout config.
+///
+/// Init directives win over the base options, matching mermaid.js semantics
+/// where the init directive overrides site/config defaults. See
+/// [`merge_init_config`] for the merge rules.
+fn resolve_options(
+    options: RenderOptions,
+    init_config: Option<serde_json::Value>,
+) -> (Theme, LayoutConfig) {
+    match init_config {
+        Some(init) => {
+            let config = Config {
+                theme: options.theme,
+                layout: options.layout,
+                render: RenderConfig::default(),
+            };
+            let merged = merge_init_config(config, init);
+            (merged.theme, merged.layout)
+        }
+        None => (options.theme, options.layout),
+    }
 }
 
 /// Measure the SVG dimensions Mermaid would render with the given options.
@@ -245,8 +271,9 @@ pub fn measure_with_dimensions(
     dimensions: Option<(f32, f32)>,
 ) -> anyhow::Result<SvgDimensions> {
     let parsed = parse_mermaid_strict(input)?;
-    let layout = compute_layout(&parsed.graph, &options.theme, &options.layout);
-    Ok(measure_svg_dimensions(&layout, &options.layout, dimensions))
+    let (theme, layout_cfg) = resolve_options(options, parsed.init_config);
+    let layout = compute_layout(&parsed.graph, &theme, &layout_cfg);
+    Ok(measure_svg_dimensions(&layout, &layout_cfg, dimensions))
 }
 
 /// Parse a Mermaid diagram with typed parser diagnostics.
@@ -273,8 +300,9 @@ pub fn parse_mermaid_strict(input: &str) -> Result<ParseOutput, ParseError> {
 /// Render a Mermaid diagram to SVG with typed parser diagnostics.
 pub fn render_strict(input: &str, options: RenderOptions) -> Result<String, ParseError> {
     let parsed = parse_mermaid_strict(input)?;
-    let layout = compute_layout(&parsed.graph, &options.theme, &options.layout);
-    Ok(render_svg(&layout, &options.theme, &options.layout))
+    let (theme, layout_cfg) = resolve_options(options, parsed.init_config);
+    let layout = compute_layout(&parsed.graph, &theme, &layout_cfg);
+    Ok(render_svg(&layout, &theme, &layout_cfg))
 }
 
 /// Result of rendering with timing information.
@@ -368,13 +396,15 @@ pub fn render_with_detailed_timing(
     let parsed = parse_mermaid(input)?;
     let parse_us = t0.elapsed().as_micros();
 
+    let (theme, layout_cfg) = resolve_options(options, parsed.init_config);
+
     let t1 = Instant::now();
     let (layout, layout_stages) =
-        compute_layout_with_metrics(&parsed.graph, &options.theme, &options.layout);
+        compute_layout_with_metrics(&parsed.graph, &theme, &layout_cfg);
     let layout_us = t1.elapsed().as_micros();
 
     let t2 = Instant::now();
-    let svg = render_svg(&layout, &options.theme, &options.layout);
+    let svg = render_svg(&layout, &theme, &layout_cfg);
     let render_us = t2.elapsed().as_micros();
 
     Ok(RenderDetailedResult {
@@ -547,6 +577,92 @@ mod tests {
         assert!(
             (tuned_ratio - target_ratio).abs() < 0.05,
             "expected preferred ratio to closely match target for simple flowcharts (target={target_ratio:.3}, got={tuned_ratio:.3})"
+        );
+    }
+
+    #[test]
+    fn test_init_directive_theme_applies_to_render() {
+        let plain = render("flowchart LR; A-->B").unwrap();
+        let themed = render("%%{init: {'theme': 'dark'}}%%\nflowchart LR; A-->B").unwrap();
+        assert_ne!(
+            plain, themed,
+            "init theme directive should change library render output"
+        );
+    }
+
+    #[test]
+    fn test_init_directive_theme_variables_apply_to_render() {
+        let svg = render(
+            "%%{init: {'themeVariables': {'primaryColor': '#123456'}}}%%\nflowchart LR; A-->B",
+        )
+        .unwrap();
+        assert!(
+            svg.contains("#123456"),
+            "init themeVariables.primaryColor should appear in library render output"
+        );
+    }
+
+    #[test]
+    fn test_init_directive_applies_via_render_with_options_strict_and_measure() {
+        let input = "%%{init: {'themeVariables': {'primaryColor': '#abc123'}}}%%\nflowchart LR; A-->B";
+        let with_options = render_with_options(input, RenderOptions::default()).unwrap();
+        assert!(with_options.contains("#abc123"));
+
+        let strict = render_strict(input, RenderOptions::default()).unwrap();
+        assert!(strict.contains("#abc123"));
+
+        let timed = render_with_timing(input, RenderOptions::default()).unwrap();
+        assert!(timed.svg.contains("#abc123"));
+
+        // measure() should honor init-driven layout config (pie height changes size).
+        let base = measure("pie\n \"A\" : 1\n \"B\" : 2", RenderOptions::default()).unwrap();
+        let taller = measure(
+            "%%{init: {'pie': {'height': 720}}}%%\npie\n \"A\" : 1\n \"B\" : 2",
+            RenderOptions::default(),
+        )
+        .unwrap();
+        assert!(
+            taller.height > base.height,
+            "init pie.height should grow measured output (base={}, taller={})",
+            base.height,
+            taller.height
+        );
+    }
+
+    #[test]
+    fn test_init_directive_overrides_explicit_options() {
+        // Documented contract: init directives win over RenderOptions,
+        // matching mermaid.js where init overrides site config.
+        let input =
+            "%%{init: {'themeVariables': {'primaryColor': '#fedcba'}}}%%\nflowchart LR; A-->B";
+        let opts = RenderOptions::mermaid_default();
+        let svg = render_with_options(input, opts).unwrap();
+        assert!(
+            svg.contains("#fedcba"),
+            "init themeVariables should override the explicitly passed theme"
+        );
+    }
+
+    #[test]
+    fn test_pie_init_text_position_applies_to_library_render() {
+        let base = render(
+            r#"pie
+            title Pets
+            "Dogs" : 10
+            "Cats" : 5"#,
+        )
+        .unwrap();
+        let moved = render(
+            r#"%%{init: {'pie': {'textPosition': 0.5}}}%%
+pie
+            title Pets
+            "Dogs" : 10
+            "Cats" : 5"#,
+        )
+        .unwrap();
+        assert_ne!(
+            base, moved,
+            "pie init textPosition should change library render output"
         );
     }
 
