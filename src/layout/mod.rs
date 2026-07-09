@@ -13,7 +13,7 @@ pub(crate) mod label_placement;
 mod mindmap;
 mod pie;
 mod quadrant;
-mod radar;
+pub(crate) mod radar;
 mod ranking;
 mod routing;
 mod sankey;

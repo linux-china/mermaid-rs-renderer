@@ -2433,19 +2433,18 @@ fn render_requirement(layout: &Layout, theme: &Theme, config: &LayoutConfig) -> 
 }
 
 fn render_radar(layout: &Layout, theme: &Theme, _config: &LayoutConfig) -> String {
-    use std::f32::consts::PI;
+    // Geometry constants are shared with the layout stage (single source of
+    // truth) so canvas bounds always match rendered geometry.
+    use crate::layout::radar::{
+        AXIS_LABEL_FONT_SIZE, GRID_STEPS, LEGEND_BOX_SIZE, LEGEND_GAP, LEGEND_OFFSET_FACTOR,
+        MAX_RADIUS, axis_angle, axis_label_position, legend_row_height,
+    };
 
-    const WIDTH: f32 = 700.0;
-    const HEIGHT: f32 = 700.0;
-    const CENTER_X: f32 = WIDTH / 2.0;
-    const CENTER_Y: f32 = HEIGHT / 2.0;
-    const MAX_RADIUS: f32 = 300.0;
-    const GRID_STEPS: usize = 5;
-    const AXIS_LABEL_OFFSET: f32 = 15.0;
-    const LEGEND_BOX_SIZE: f32 = 12.0;
-    const LEGEND_GAP: f32 = 4.0;
+    // Upstream mermaid: graticuleColor defaults to #DEDEDE in every theme,
+    // but axisColor derives from theme lineColor and label/legend text
+    // inherits the global textColor fill, so both must follow the theme
+    // (hardcoding #333333 is invisible on the dark theme's #333333 bg).
     const GRID_COLOR: &str = "#DEDEDE";
-    const AXIS_COLOR: &str = "#333333";
     const RADAR_HUES: [i32; 12] = [240, 60, 80, 270, 300, 330, 0, 30, 90, 150, 180, 210];
     const RADAR_LIGHTNESS: &str = "76.2745098039%";
 
@@ -2525,13 +2524,15 @@ fn render_radar(layout: &Layout, theme: &Theme, _config: &LayoutConfig) -> Strin
         max_value = 1.0;
     }
     let scale = MAX_RADIUS / max_value;
-    let angle_step = 2.0 * PI / axis_count as f32;
-    let start_angle = -PI / 2.0;
+    let (center_x, center_y) = match &layout.diagram {
+        crate::layout::DiagramData::Radar(radar) => (radar.center_x, radar.center_y),
+        _ => (layout.width / 2.0, layout.height / 2.0),
+    };
 
     let mut svg = String::new();
     svg.push_str(&format!(
         "<g transform=\"translate({:.3}, {:.3})\">",
-        CENTER_X, CENTER_Y
+        center_x, center_y
     ));
 
     for step in 1..=GRID_STEPS {
@@ -2543,32 +2544,26 @@ fn render_radar(layout: &Layout, theme: &Theme, _config: &LayoutConfig) -> Strin
     }
 
     for (idx, axis) in axes.iter().enumerate() {
-        let angle = start_angle + angle_step * idx as f32;
+        let angle = axis_angle(idx, axis_count);
         let x = MAX_RADIUS * angle.cos();
         let y = MAX_RADIUS * angle.sin();
         svg.push_str(&format!(
             "<line x1=\"0\" y1=\"0\" x2=\"{:.3}\" y2=\"{:.3}\" stroke=\"{}\" stroke-width=\"2\" />",
-            x, y, AXIS_COLOR
+            x,
+            y,
+            escape_xml(&theme.line_color)
         ));
-        let label_r = MAX_RADIUS + AXIS_LABEL_OFFSET;
-        let mut lx = label_r * angle.cos();
-        let ly = label_r * angle.sin();
-        let anchor = if angle.cos() > 0.35 {
-            lx -= 6.0;
-            "end"
-        } else if angle.cos() < -0.35 {
-            lx += 6.0;
-            "start"
-        } else {
-            "middle"
-        };
+        // Labels anchor away from the chart: 'start' on the right, 'end' on
+        // the left, so text extends outward instead of over the gridlines.
+        let (lx, ly, anchor) = axis_label_position(angle);
         svg.push_str(&format!(
-            "<text x=\"{:.3}\" y=\"{:.3}\" text-anchor=\"{}\" dominant-baseline=\"middle\" font-family=\"{}\" font-size=\"12\" fill=\"{}\">{}</text>",
+            "<text x=\"{:.3}\" y=\"{:.3}\" text-anchor=\"{}\" dominant-baseline=\"middle\" font-family=\"{}\" font-size=\"{}\" fill=\"{}\">{}</text>",
             lx,
             ly,
-            anchor,
+            anchor.as_svg(),
             normalize_font_family(&theme.font_family),
-            AXIS_COLOR,
+            AXIS_LABEL_FONT_SIZE,
+            escape_xml(&theme.text_color),
             escape_xml(axis)
         ));
     }
@@ -2578,7 +2573,7 @@ fn render_radar(layout: &Layout, theme: &Theme, _config: &LayoutConfig) -> Strin
         let color = format!("hsl({}, 100%, {})", hue, RADAR_LIGHTNESS);
         let mut points = Vec::with_capacity(axis_count);
         for (idx, value) in values.iter().enumerate() {
-            let angle = start_angle + angle_step * idx as f32;
+            let angle = axis_angle(idx, axis_count);
             let r = value * scale;
             points.push((r * angle.cos(), r * angle.sin()));
         }
@@ -2598,9 +2593,9 @@ fn render_radar(layout: &Layout, theme: &Theme, _config: &LayoutConfig) -> Strin
             escape_xml(&color)
         ));
 
-        let legend_offset = MAX_RADIUS * 0.8;
+        let legend_offset = MAX_RADIUS * LEGEND_OFFSET_FACTOR;
         let legend_x = legend_offset;
-        let legend_y = -legend_offset + series_idx as f32 * (theme.font_size + 6.0);
+        let legend_y = -legend_offset + series_idx as f32 * legend_row_height(theme.font_size);
         svg.push_str(&format!(
             "<rect x=\"{:.3}\" y=\"{:.3}\" width=\"{}\" height=\"{}\" fill=\"{}\" fill-opacity=\"0.5\" stroke=\"{}\" />",
             legend_x,
@@ -2615,7 +2610,7 @@ fn render_radar(layout: &Layout, theme: &Theme, _config: &LayoutConfig) -> Strin
             legend_x + LEGEND_BOX_SIZE + LEGEND_GAP,
             legend_y,
             normalize_font_family(&theme.font_family),
-            AXIS_COLOR,
+            escape_xml(&theme.text_color),
             escape_xml(name)
         ));
     }
@@ -6366,6 +6361,233 @@ mod tests {
     use crate::config::LayoutConfig;
     use crate::ir::{Direction, Graph};
     use crate::layout::compute_layout;
+
+    /// Bounding box of one rendered radar axis label, in absolute SVG coords.
+    #[derive(Debug, Clone)]
+    struct AxisLabelBox {
+        text: String,
+        x0: f32,
+        y0: f32,
+        x1: f32,
+        y1: f32,
+    }
+
+    fn radar_axis_label_boxes(
+        svg: &str,
+        layout: &crate::layout::Layout,
+        theme: &Theme,
+        config: &LayoutConfig,
+    ) -> Vec<AxisLabelBox> {
+        use crate::layout::radar::{AXIS_LABEL_FONT_SIZE, axis_label_width};
+        let (cx, cy) = match &layout.diagram {
+            crate::layout::DiagramData::Radar(radar) => (radar.center_x, radar.center_y),
+            _ => panic!("expected radar layout"),
+        };
+        let mut out = Vec::new();
+        for chunk in svg.split("<text ").skip(1) {
+            if !chunk.contains("dominant-baseline=\"middle\"") {
+                continue;
+            }
+            let attr = |name: &str| -> Option<&str> {
+                let pat = format!("{}=\"", name);
+                let start = chunk.find(&pat)? + pat.len();
+                chunk[start..].split('"').next()
+            };
+            let Some(font_size) = attr("font-size") else {
+                continue;
+            };
+            if font_size.parse::<f32>() != Ok(AXIS_LABEL_FONT_SIZE) {
+                continue;
+            }
+            let x: f32 = attr("x").unwrap().parse().unwrap();
+            let y: f32 = attr("y").unwrap().parse().unwrap();
+            let anchor = attr("text-anchor").unwrap().to_string();
+            let text = chunk
+                .split('>')
+                .nth(1)
+                .unwrap()
+                .split('<')
+                .next()
+                .unwrap()
+                .to_string();
+            let w = axis_label_width(&text, theme, config);
+            let (x0, x1) = match anchor.as_str() {
+                "start" => (x, x + w),
+                "end" => (x - w, x),
+                _ => (x - w / 2.0, x + w / 2.0),
+            };
+            let half_h = AXIS_LABEL_FONT_SIZE / 2.0;
+            out.push(AxisLabelBox {
+                text,
+                x0: cx + x0,
+                y0: cy + y - half_h,
+                x1: cx + x1,
+                y1: cy + y + half_h,
+            });
+        }
+        out
+    }
+
+    /// Distance from a point to the closest point of an axis-aligned rect.
+    fn rect_distance_to_point(b: &AxisLabelBox, px: f32, py: f32) -> f32 {
+        let dx = (b.x0 - px).max(0.0).max(px - b.x1);
+        let dy = (b.y0 - py).max(0.0).max(py - b.y1);
+        (dx * dx + dy * dy).sqrt()
+    }
+
+    fn assert_radar_axis_labels_clear(input: &str, expected_axes: usize) {
+        use crate::layout::radar::MAX_RADIUS;
+        let theme = Theme::modern();
+        let config = LayoutConfig::default();
+        let parsed = crate::parser::parse_mermaid(input).expect("radar parses");
+        let layout = compute_layout(&parsed.graph, &theme, &config);
+        let svg = render_svg(&layout, &theme, &config);
+        let (cx, cy) = match &layout.diagram {
+            crate::layout::DiagramData::Radar(radar) => (radar.center_x, radar.center_y),
+            _ => panic!("expected radar layout"),
+        };
+
+        let boxes = radar_axis_label_boxes(&svg, &layout, &theme, &config);
+        assert_eq!(
+            boxes.len(),
+            expected_axes,
+            "expected {expected_axes} axis labels, found {}",
+            boxes.len()
+        );
+
+        for b in &boxes {
+            // 1. No intrusion inside the outer grid circle.
+            let dist = rect_distance_to_point(b, cx, cy);
+            assert!(
+                dist >= MAX_RADIUS - 0.01,
+                "axis label {:?} bbox ({:.1},{:.1})-({:.1},{:.1}) intrudes into the grid \
+                 circle: closest distance {:.1} < {MAX_RADIUS}",
+                b.text,
+                b.x0,
+                b.y0,
+                b.x1,
+                b.y1,
+                dist
+            );
+            // 2. No viewBox clipping.
+            assert!(
+                b.x0 >= 0.0 && b.y0 >= 0.0 && b.x1 <= layout.width && b.y1 <= layout.height,
+                "axis label {:?} bbox ({:.1},{:.1})-({:.1},{:.1}) escapes the {}x{} canvas",
+                b.text,
+                b.x0,
+                b.y0,
+                b.x1,
+                b.y1,
+                layout.width,
+                layout.height
+            );
+        }
+
+        // 3. No label-label overlap.
+        for i in 0..boxes.len() {
+            for j in (i + 1)..boxes.len() {
+                let (a, b) = (&boxes[i], &boxes[j]);
+                let overlap =
+                    a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+                assert!(
+                    !overlap,
+                    "axis labels {:?} and {:?} overlap: ({:.1},{:.1})-({:.1},{:.1}) vs \
+                     ({:.1},{:.1})-({:.1},{:.1})",
+                    a.text, b.text, a.x0, a.y0, a.x1, a.y1, b.x0, b.y0, b.x1, b.y1
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn radar_axis_labels_extend_outward_8_axes_long_labels() {
+        let axes: Vec<String> = (1..=8)
+            .map(|i| format!("Extremely Long Axis Label Number {i}"))
+            .collect();
+        let input = format!(
+            "radar-beta\n  axis {}\n  curve Alpha {{{}}}\n",
+            axes.join(", "),
+            (1..=8).map(|i| i.to_string()).collect::<Vec<_>>().join(",")
+        );
+        assert_radar_axis_labels_clear(&input, 8);
+    }
+
+    #[test]
+    fn radar_axis_labels_extend_outward_12_axes_long_labels() {
+        let axes: Vec<String> = (1..=12)
+            .map(|i| format!("Verbose Diagnostic Category {i}"))
+            .collect();
+        let input = format!(
+            "radar-beta\n  axis {}\n  curve Alpha {{{}}}\n",
+            axes.join(", "),
+            (1..=12)
+                .map(|i| i.to_string())
+                .collect::<Vec<_>>()
+                .join(",")
+        );
+        assert_radar_axis_labels_clear(&input, 12);
+    }
+
+    #[test]
+    fn radar_axis_label_anchors_point_away_from_chart() {
+        // Right-side labels must anchor at 'start' (text grows rightward, away
+        // from the grid) and left-side labels at 'end'.
+        let input = "radar-beta\n  axis North, East, South, West\n  curve A {1,2,3,4}\n";
+        let theme = Theme::modern();
+        let config = LayoutConfig::default();
+        let parsed = crate::parser::parse_mermaid(input).expect("radar parses");
+        let layout = compute_layout(&parsed.graph, &theme, &config);
+        let svg = render_svg(&layout, &theme, &config);
+        let anchor_of = |label: &str| -> String {
+            let chunk = svg
+                .split("<text ")
+                .find(|c| c.contains(&format!(">{label}</text>")))
+                .unwrap_or_else(|| panic!("axis label {label} missing"));
+            chunk
+                .split("text-anchor=\"")
+                .nth(1)
+                .unwrap()
+                .split('"')
+                .next()
+                .unwrap()
+                .to_string()
+        };
+        assert_eq!(anchor_of("East"), "start", "right-side label anchors start");
+        assert_eq!(anchor_of("West"), "end", "left-side label anchors end");
+        assert_eq!(anchor_of("North"), "middle", "top label anchors middle");
+        assert_eq!(anchor_of("South"), "middle", "bottom label anchors middle");
+    }
+
+    #[test]
+    fn radar_canvas_grows_with_label_extents_and_keeps_min_size() {
+        use crate::layout::radar::MIN_HALF_EXTENT;
+        let theme = Theme::modern();
+        let config = LayoutConfig::default();
+        // Short labels: historical minimum canvas.
+        let parsed = crate::parser::parse_mermaid(
+            "radar-beta\n  axis A, B, C\n  curve X {1,2,3}\n",
+        )
+        .unwrap();
+        let small = compute_layout(&parsed.graph, &theme, &config);
+        assert!(
+            small.width >= 2.0 * MIN_HALF_EXTENT - 0.01,
+            "canvas must keep the minimum extent, got {}",
+            small.width
+        );
+        // Long labels: canvas must grow beyond the minimum.
+        let parsed = crate::parser::parse_mermaid(
+            "radar-beta\n  axis Extremely Long Axis Label AAAA, Extremely Long Axis Label BBBB, \
+             Extremely Long Axis Label CCCC, Extremely Long Axis Label DDDD\n  curve X {1,2,3,4}\n",
+        )
+        .unwrap();
+        let big = compute_layout(&parsed.graph, &theme, &config);
+        assert!(
+            big.width > small.width + 50.0,
+            "canvas width should grow with long labels: {} vs {}",
+            big.width,
+            small.width
+        );
+    }
 
     #[test]
     fn render_svg_basic() {

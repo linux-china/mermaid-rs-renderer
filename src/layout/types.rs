@@ -450,6 +450,10 @@ pub struct PieData {
 #[derive(Debug, Clone)]
 pub struct RadarLayout {
     pub title: Option<String>,
+    /// Chart center within the layout canvas. The canvas grows with measured
+    /// axis-label and legend extents, so the center is not simply width/2.
+    pub center_x: f32,
+    pub center_y: f32,
 }
 
 #[derive(Debug, Clone)]
