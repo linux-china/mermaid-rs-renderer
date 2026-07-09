@@ -380,6 +380,7 @@ fn render_all_fixtures() {
         "pie/basic.mmd",
         "quadrant/basic.mmd",
         "radar/basic.mmd",
+        "radar/negative.mmd",
         "requirement/basic.mmd",
         "sankey/basic.mmd",
         "sequence/basic.mmd",
