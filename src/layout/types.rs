@@ -448,6 +448,11 @@ pub struct PieData {
 }
 
 #[derive(Debug, Clone)]
+pub struct RadarLayout {
+    pub title: Option<String>,
+}
+
+#[derive(Debug, Clone)]
 pub enum DiagramData {
     Graph { state_notes: Vec<StateNoteLayout> },
     Sequence(SequenceData),
@@ -460,6 +465,7 @@ pub enum DiagramData {
     XYChart(XYChartLayout),
     Timeline(TimelineLayout),
     Journey(JourneyLayout),
+    Radar(RadarLayout),
     Error(ErrorLayout),
 }
 

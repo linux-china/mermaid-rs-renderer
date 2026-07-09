@@ -4306,7 +4306,14 @@ fn parse_radar_diagram(input: &str) -> Result<ParseOutput> {
             continue;
         }
         let lower = line.to_ascii_lowercase();
-        if lower.starts_with("radar") || lower.starts_with("title") {
+        if lower.starts_with("radar") {
+            continue;
+        }
+        if lower.starts_with("title") {
+            let rest = line.get(5..).unwrap_or("").trim();
+            if !rest.is_empty() {
+                graph.radar_title = Some(strip_quotes(rest));
+            }
             continue;
         }
         if lower.starts_with("axis") {

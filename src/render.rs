@@ -2620,13 +2620,23 @@ fn render_radar(layout: &Layout, theme: &Theme, _config: &LayoutConfig) -> Strin
         ));
     }
 
-    svg.push_str(&format!(
-        "<text x=\"0\" y=\"{:.3}\" text-anchor=\"middle\" dominant-baseline=\"hanging\" font-family=\"{}\" font-size=\"{}\" fill=\"{}\"></text>",
-        -(MAX_RADIUS + 50.0),
-        normalize_font_family(&theme.font_family),
-        theme.font_size,
-        AXIS_COLOR
-    ));
+    let title = match &layout.diagram {
+        crate::layout::DiagramData::Radar(radar) => radar.title.as_deref(),
+        _ => None,
+    };
+    if let Some(title) = title {
+        // Keep the title above the top axis label: the topmost axis label sits at
+        // -(MAX_RADIUS + AXIS_LABEL_OFFSET) with a middle baseline, while the title
+        // hangs downward from -(MAX_RADIUS + 50), leaving a clear gap between them.
+        svg.push_str(&format!(
+            "<text x=\"0\" y=\"{:.3}\" text-anchor=\"middle\" dominant-baseline=\"hanging\" font-family=\"{}\" font-size=\"{}\" font-weight=\"bold\" fill=\"{}\">{}</text>",
+            -(MAX_RADIUS + 50.0),
+            normalize_font_family(&theme.font_family),
+            theme.font_size,
+            escape_xml(&theme.text_color),
+            escape_xml(title)
+        ));
+    }
 
     svg.push_str("</g>");
     svg

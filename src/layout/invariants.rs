@@ -749,6 +749,9 @@ pub fn validate_layout_invariants(layout: &Layout) -> Result<(), Vec<LayoutInvar
                 check_text_block(&mut errors, &format!("{path}.label"), &section.label);
             }
         }
+        DiagramData::Radar(radar) => {
+            let _ = radar;
+        }
         DiagramData::Error(error) => {
             for (path, value) in [
                 ("error.viewbox_width", error.viewbox_width),

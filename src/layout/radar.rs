@@ -56,8 +56,8 @@ pub(super) fn compute_radar_layout(graph: &Graph, theme: &Theme, config: &Layout
         subgraphs: Vec::new(),
         width: WIDTH,
         height: HEIGHT,
-        diagram: DiagramData::Graph {
-            state_notes: Vec::new(),
-        },
+        diagram: DiagramData::Radar(super::RadarLayout {
+            title: graph.radar_title.clone(),
+        }),
     }
 }
