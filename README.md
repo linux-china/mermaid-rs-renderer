@@ -489,9 +489,12 @@ touch your normal remote working copy unless you set `MMDR_REMOTE_DIR` to that p
 
 **Benchmarks:**
 ```bash
-cargo bench --bench renderer              # Microbenchmarks
+cargo bench --features benchmark --bench renderer  # Microbenchmarks
 cargo build --release && python scripts/bench_compare.py  # vs mermaid-cli
 ```
+
+For a faster optimized development build, use `cargo build --profile release-fast`.
+The regular release profile keeps fat LTO for published binaries.
 
 Release process: see [docs/release.md](https://github.com/1jehuang/mermaid-rs-renderer/blob/master/docs/release.md).
 

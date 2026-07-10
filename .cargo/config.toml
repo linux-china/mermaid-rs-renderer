@@ -1,0 +1,11 @@
+# Repo-local build settings tuned for memory-constrained dev machines
+# (8 logical CPUs / 15GiB RAM): bound compile parallelism and default test
+# threads to avoid memory-pressure stalls when linking the ~15 large test
+# binaries. Override per-invocation with `cargo build -jN` or
+# `RUST_TEST_THREADS=N` (force = false lets the environment win).
+
+[build]
+jobs = 4
+
+[env]
+RUST_TEST_THREADS = { value = "4", force = false }

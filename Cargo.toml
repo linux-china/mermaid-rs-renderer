@@ -25,6 +25,7 @@ exclude = [
     "docs/*.md",
     "scripts/",
     ".github/",
+    ".cargo/",
     "package.json",
     "package-lock.json",
     "Cargo.toml.orig",
@@ -42,6 +43,9 @@ default = ["cli", "png"]
 cli = ["dep:clap"]
 # PNG output support (adds resvg/usvg dependencies)
 png = ["dep:resvg", "dep:usvg"]
+# Criterion microbenchmarks (kept behind a feature so normal builds and
+# `cargo test --all-targets` skip the criterion dependency stack)
+benchmark = ["dep:criterion"]
 
 [dependencies]
 anyhow = "1.0"
@@ -56,17 +60,32 @@ fontdb = "0.23"
 ttf-parser = "0.25"
 resvg = { version = "0.47.0", optional = true }
 usvg = { version = "0.47.0", optional = true }
+criterion = { version = "0.8", optional = true, default-features = false, features = ["cargo_bench_support"] }
 
 [profile.release]
 lto = true
 codegen-units = 1
 
-[dev-dependencies]
-criterion = "0.8"
+# Faster optimized iteration profile: thin LTO and parallel codegen compile
+# much faster than the fat-LTO release profile. Published releases keep
+# [profile.release].
+[profile.release-fast]
+inherits = "release"
+lto = "thin"
+codegen-units = 16
+
+# Full debug info is rarely needed and inflates the ~100MB-per-binary
+# integration test link step; line tables keep usable backtraces.
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.test]
+debug = "line-tables-only"
 
 [[bench]]
 name = "renderer"
 harness = false
+required-features = ["benchmark"]
 
 [[bin]]
 name = "mmdr"
