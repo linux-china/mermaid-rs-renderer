@@ -628,8 +628,7 @@ flowchart LR"#;
 
     #[test]
     fn block_beta_named_group_end_passes() {
-        let input =
-            "block-beta\ncolumns 3\na b c\nblock:group1[\"Group One\"]\nd\ne\nend\nf\ngroup1 --> f\n";
+        let input = "block-beta\ncolumns 3\na b c\nblock:group1[\"Group One\"]\nd\ne\nend\nf\ngroup1 --> f\n";
         assert!(validate(input).is_ok(), "got {:?}", validate(input).err());
     }
 

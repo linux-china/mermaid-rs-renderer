@@ -352,8 +352,7 @@ fn state_final_marker_bullseye_inside_composite_state() {
             .split("<circle ")
             .skip(1)
             .filter(|c| {
-                c.contains(&format!("cx=\"{:.2}\"", cx))
-                    && c.contains(&format!("cy=\"{:.2}\"", cy))
+                c.contains(&format!("cx=\"{:.2}\"", cx)) && c.contains(&format!("cy=\"{:.2}\"", cy))
             })
             .count();
         assert!(
@@ -640,5 +639,90 @@ fn radar_curve_with_more_values_than_axes_ignores_extras() {
     assert_eq!(
         point_count, 3,
         "curve polygon must have exactly one point per axis even with extra values"
+    );
+}
+
+#[test]
+fn state_concurrent_regions_render_dividers_and_per_region_starts() {
+    // stateDiagram-v2 concurrency ('--') defects: missing region divider,
+    // per-region [*] merged into one fork bar, and that bar sitting exactly
+    // on the composite's title separator line.
+    let input = r#"stateDiagram-v2
+  state Active {
+    [*] --> One
+    --
+    [*] --> Two
+  }
+"#;
+    let (graph, layout, svg) = render(input);
+    assert_eq!(graph.kind, DiagramKind::State);
+
+    // (2) One independent start pseudostate per region, no fork bar.
+    let start_ids: Vec<&String> = graph
+        .nodes
+        .keys()
+        .filter(|id| id.starts_with("__start_"))
+        .collect();
+    assert_eq!(
+        start_ids.len(),
+        2,
+        "each concurrent region keeps its own [*] start state: {start_ids:?}"
+    );
+    assert!(
+        graph
+            .nodes
+            .values()
+            .all(|node| node.shape != NodeShape::ForkJoin),
+        "per-region [*] must not merge into a fork/join bar"
+    );
+
+    // (1) A divider line separates the two regions.
+    assert!(
+        svg.contains("stroke-dasharray=\"4 4\""),
+        "concurrent regions should be separated by a divider line"
+    );
+
+    // (3) Children stay inside the composite body with an inset below the
+    // title separator (header band is label + padding; give it clearance).
+    let active = layout
+        .subgraphs
+        .iter()
+        .find(|sub| sub.label == "Active")
+        .expect("composite subgraph");
+    let header_bottom = active.y + active.label_block.height;
+    for node in layout.nodes.values() {
+        if node.hidden {
+            continue;
+        }
+        assert!(
+            node.y > header_bottom + 4.0,
+            "child {} at y={} must clear the composite title band ending at {}",
+            node.id,
+            node.y,
+            header_bottom
+        );
+    }
+
+    // Three regions produce two dividers.
+    let input3 = r#"stateDiagram-v2
+  state Active {
+    [*] --> One
+    --
+    [*] --> Two
+    --
+    [*] --> Three
+  }
+"#;
+    let (graph3, _layout3, svg3) = render(input3);
+    let start_count = graph3
+        .nodes
+        .keys()
+        .filter(|id| id.starts_with("__start_"))
+        .count();
+    assert_eq!(start_count, 3, "three regions keep three [*] markers");
+    let divider_count = svg3.matches("stroke-dasharray=\"4 4\"").count();
+    assert_eq!(
+        divider_count, 2,
+        "three concurrent regions need exactly two dividers"
     );
 }

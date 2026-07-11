@@ -1194,7 +1194,10 @@ fn state_block_note_renders_multiline_text() {
     );
 
     // Note text is emitted in the SVG.
-    assert!(svg.contains("Block note body"), "note text missing from svg");
+    assert!(
+        svg.contains("Block note body"),
+        "note text missing from svg"
+    );
     assert!(
         svg.contains("with a second line"),
         "second note line missing from svg"

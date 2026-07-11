@@ -811,8 +811,12 @@ pub(super) fn subgraph_padding_from_label(
     } else if graph.kind == crate::ir::DiagramKind::Kanban {
         pad_y.max(label_height + SUBGRAPH_LABEL_GAP_KANBAN)
     } else if graph.kind == crate::ir::DiagramKind::State {
+        // Header height (matches the rendered title band) plus a body inset
+        // so the topmost child clears the title separator line instead of
+        // sitting directly on it.
         (label_height + theme.font_size * STATE_SUBGRAPH_TOP_LABEL_SCALE)
             .max(theme.font_size * STATE_SUBGRAPH_TOP_MIN_SCALE)
+            + STATE_SUBGRAPH_BASE_PAD
     } else {
         pad_y + label_height + SUBGRAPH_LABEL_GAP_GENERIC
     };
@@ -1440,6 +1444,7 @@ pub(super) fn build_subgraph_layouts(
 
         graph_to_local.push(Some(subgraphs.len()));
         subgraphs.push(SubgraphLayout {
+            id: sub.id.clone(),
             label: sub.label.clone(),
             label_block,
             nodes: sub.nodes.clone(),
@@ -1648,6 +1653,7 @@ mod tests {
     fn anchor_layout_for_edge_uses_expected_perimeter_side() {
         let anchor = make_node("anchor", 0.0, 0.0, 10.0, 10.0);
         let subgraph = SubgraphLayout {
+            id: None,
             label: "Cluster".to_string(),
             label_block: TextBlock {
                 lines: vec!["Cluster".to_string()],
@@ -1676,6 +1682,7 @@ mod tests {
     fn anchor_layout_for_edge_towards_uses_nearest_boundary_port() {
         let anchor = make_node("anchor", 0.0, 0.0, 10.0, 10.0);
         let subgraph = SubgraphLayout {
+            id: None,
             label: "Cluster".to_string(),
             label_block: TextBlock {
                 lines: vec!["Cluster".to_string()],

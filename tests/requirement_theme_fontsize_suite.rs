@@ -190,7 +190,9 @@ fn run_case(case: &Case) {
         let node_texts: Vec<f32> = texts
             .iter()
             .filter(|(x, y)| {
-                *x >= node.x && *x <= node.x + node.width && *y >= node.y - 1.0
+                *x >= node.x
+                    && *x <= node.x + node.width
+                    && *y >= node.y - 1.0
                     && *y <= node.y + node.height + font_size
             })
             .map(|(_, y)| *y)

@@ -1,7 +1,20 @@
 use super::*;
 
-fn finite_chart_value(value: f32) -> f32 {
-    if value.is_finite() { value } else { 0.0 }
+/// Number of decimals needed so that `step`-spaced tick labels stay distinct.
+fn tick_decimals(step: f32) -> usize {
+    let step = step.abs();
+    if step == 0.0 {
+        return 0;
+    }
+    let mut decimals = 0usize;
+    while decimals < 6 {
+        let scale = 10f32.powi(decimals as i32);
+        if ((step * scale).round() / scale - step).abs() <= step * 1e-3 {
+            break;
+        }
+        decimals += 1;
+    }
+    decimals
 }
 
 pub(super) fn compute_xychart_layout(
@@ -10,11 +23,16 @@ pub(super) fn compute_xychart_layout(
     config: &LayoutConfig,
 ) -> Layout {
     let data = &graph.xychart;
-    let font_size = theme.font_size;
     let padding = 40.0;
     let y_axis_width = 60.0;
     let x_axis_height = 40.0;
-    let title_height = if data.title.is_some() { 30.0 } else { 0.0 };
+    let title = data.title.as_ref().map(|t| measure_label(t, theme, config));
+    // Size the title band from the measured (possibly wrapped) title so long
+    // titles do not overlap the plot area.
+    let title_height = title
+        .as_ref()
+        .map(|t| (t.height + 12.0).max(30.0))
+        .unwrap_or(0.0);
 
     let plot_width = 400.0;
     let plot_height = 250.0;
@@ -29,7 +47,7 @@ pub(super) fn compute_xychart_layout(
     let all_values: Vec<f32> = data
         .series
         .iter()
-        .flat_map(|s| s.values.iter().copied().map(finite_chart_value))
+        .flat_map(|s| s.values.iter().copied().filter(|v| v.is_finite()))
         .collect();
     let min_val = data
         .y_axis_min
@@ -39,7 +57,14 @@ pub(super) fn compute_xychart_layout(
         .y_axis_max
         .filter(|v| v.is_finite())
         .unwrap_or_else(|| all_values.iter().copied().fold(0.0_f32, f32::max));
-    let range = (max_val - min_val).max(1.0);
+    // Guard only against degenerate (zero/near-zero) ranges; sub-1 explicit
+    // ranges like `y-axis 0 --> 0.5` must keep their true span.
+    let raw_range = max_val - min_val;
+    let range = if raw_range.abs() < 1e-6 {
+        1.0
+    } else {
+        raw_range
+    };
 
     // Number of categories
     let num_categories = data
@@ -89,9 +114,14 @@ pub(super) fn compute_xychart_layout(
 
         match series.kind {
             crate::ir::XYSeriesKind::Bar => {
-                for (i, raw_value) in series.values.iter().copied().enumerate() {
-                    let value = finite_chart_value(raw_value);
-                    let bar_height = ((value - min_val) / range) * plot_height;
+                for (i, value) in series.values.iter().copied().enumerate() {
+                    if !value.is_finite() {
+                        // Skip NaN/Infinity instead of fabricating a bar at 0.
+                        continue;
+                    }
+                    // Keep bars at (or below) the axis minimum visible, like
+                    // mermaid-js which enforces a minimum bar height.
+                    let bar_height = (((value - min_val) / range) * plot_height).max(2.0);
                     let x = plot_x
                         + i as f32 * bar_group_width
                         + bar_padding
@@ -115,8 +145,8 @@ pub(super) fn compute_xychart_layout(
                     .iter()
                     .copied()
                     .enumerate()
-                    .map(|(i, raw_value)| {
-                        let value = finite_chart_value(raw_value);
+                    .filter(|(_, value)| value.is_finite())
+                    .map(|(i, value)| {
                         let x = plot_x + i as f32 * bar_group_width + bar_group_width / 2.0;
                         let y = plot_y + plot_height - ((value - min_val) / range) * plot_height;
                         (x, y)
@@ -141,15 +171,16 @@ pub(super) fn compute_xychart_layout(
 
     // Y-axis ticks
     let num_ticks = 5;
+    let tick_step = range / num_ticks as f32;
+    let decimals = tick_decimals(tick_step);
     let y_axis_ticks: Vec<(String, f32)> = (0..=num_ticks)
         .map(|i| {
             let value = min_val + (i as f32 / num_ticks as f32) * range;
             let y = plot_y + plot_height - (i as f32 / num_ticks as f32) * plot_height;
-            (format!("{:.0}", value), y)
+            (format!("{:.*}", decimals, value), y)
         })
         .collect();
 
-    let title = data.title.as_ref().map(|t| measure_label(t, theme, config));
     let x_axis_label = data
         .x_axis_label
         .as_ref()
@@ -166,7 +197,7 @@ pub(super) fn compute_xychart_layout(
         subgraphs: Vec::new(),
         diagram: DiagramData::XYChart(XYChartLayout {
             title,
-            title_y: padding + font_size,
+            title_y: padding + title_height / 2.0,
             x_axis_label,
             x_axis_label_y: plot_y + plot_height + x_axis_height - 10.0,
             y_axis_label,

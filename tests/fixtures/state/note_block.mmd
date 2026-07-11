@@ -1,0 +1,14 @@
+stateDiagram-v2
+direction LR
+state Comp {
+    [*] --> Inner
+    Inner --> [*]
+}
+note right of Comp
+    Block note body
+    with a second line
+end note
+note left of Comp
+    Left side note
+end note
+Comp --> Done

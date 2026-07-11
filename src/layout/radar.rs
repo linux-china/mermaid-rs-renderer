@@ -239,8 +239,8 @@ pub(super) fn compute_radar_layout(graph: &Graph, theme: &Theme, config: &Layout
     for (idx, series) in resolved.series.iter().enumerate() {
         let label = measure_label(&series.name, theme, config);
         let row_y = -legend_offset + idx as f32 * row_height;
-        right = right
-            .max(legend_offset + LEGEND_BOX_SIZE + LEGEND_GAP + label.width + CANVAS_MARGIN);
+        right =
+            right.max(legend_offset + LEGEND_BOX_SIZE + LEGEND_GAP + label.width + CANVAS_MARGIN);
         bottom = bottom.max(row_y + label.height.max(LEGEND_BOX_SIZE) + CANVAS_MARGIN);
         legend_blocks.push(label);
     }

@@ -399,8 +399,7 @@ pub fn render_with_detailed_timing(
     let (theme, layout_cfg) = resolve_options(options, parsed.init_config);
 
     let t1 = Instant::now();
-    let (layout, layout_stages) =
-        compute_layout_with_metrics(&parsed.graph, &theme, &layout_cfg);
+    let (layout, layout_stages) = compute_layout_with_metrics(&parsed.graph, &theme, &layout_cfg);
     let layout_us = t1.elapsed().as_micros();
 
     let t2 = Instant::now();
@@ -604,7 +603,8 @@ mod tests {
 
     #[test]
     fn test_init_directive_applies_via_render_with_options_strict_and_measure() {
-        let input = "%%{init: {'themeVariables': {'primaryColor': '#abc123'}}}%%\nflowchart LR; A-->B";
+        let input =
+            "%%{init: {'themeVariables': {'primaryColor': '#abc123'}}}%%\nflowchart LR; A-->B";
         let with_options = render_with_options(input, RenderOptions::default()).unwrap();
         assert!(with_options.contains("#abc123"));
 

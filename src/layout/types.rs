@@ -49,6 +49,8 @@ pub struct EdgeLayout {
 
 #[derive(Debug, Clone)]
 pub struct SubgraphLayout {
+    /// Source subgraph id (e.g. state composite ids, `__region_N__` markers).
+    pub id: Option<String>,
     pub label: String,
     pub label_block: TextBlock,
     pub nodes: Vec<String>,

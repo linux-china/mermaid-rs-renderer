@@ -190,19 +190,17 @@ impl Theme {
         // theme-dark.js overrides cScale1..12 with a fixed dark palette and
         // maps pie1..pie12 straight onto it.
         let pie_colors = [
-            "#0b0000", "#4d1037", "#3f5258", "#4f2f1b", "#6e0a0a", "#3b0048", "#995a01",
-            "#154706", "#161722", "#00296f", "#01629c", "#010029",
+            "#0b0000", "#4d1037", "#3f5258", "#4f2f1b", "#6e0a0a", "#3b0048", "#995a01", "#154706",
+            "#161722", "#00296f", "#01629c", "#010029",
         ]
         .map(|value| value.to_string());
         let git_colors = [
             // git0 = lighten(secondary, 20); git1..7 = lighten(cScale2.., 10-20)
-            "#797d7d", "#a12273", "#6a8993", "#9b5c35", "#cc1212", "#65007b", "#cc7801",
-            "#31a50e",
+            "#797d7d", "#a12273", "#6a8993", "#9b5c35", "#cc1212", "#65007b", "#cc7801", "#31a50e",
         ]
         .map(|value| value.to_string());
         let git_inv_colors = [
-            "#868282", "#5edd8c", "#95766c", "#64a3ca", "#33eded", "#9aff84", "#3387fe",
-            "#ce5af1",
+            "#868282", "#5edd8c", "#95766c", "#64a3ca", "#33eded", "#9aff84", "#3387fe", "#ce5af1",
         ]
         .map(|value| value.to_string());
         Self {
@@ -271,19 +269,17 @@ impl Theme {
         let tertiary_color = "#e1efc0".to_string();
         // theme-forest.js pie1..pie12 derivation (adjust h/l on base colors).
         let pie_colors = [
-            "#cde498", "#cdffb2", "#e1efc0", "#8cb42f", "#6aff19", "#33b52e", "#70d990",
-            "#d99070", "#98cde4", "#1a6330", "#63301a", "#1a4d63",
+            "#cde498", "#cdffb2", "#e1efc0", "#8cb42f", "#6aff19", "#33b52e", "#70d990", "#d99070",
+            "#98cde4", "#1a6330", "#63301a", "#1a4d63",
         ]
         .map(|value| value.to_string());
         // git0..7 = darken(adjusted primary/secondary/tertiary, 25)
         let git_colors = [
-            "#9bc834", "#7aff33", "#b1d55a", "#c8ab34", "#c86134", "#c83452", "#34c861",
-            "#349bc8",
+            "#9bc834", "#7aff33", "#b1d55a", "#c8ab34", "#c86134", "#c83452", "#34c861", "#349bc8",
         ]
         .map(|value| value.to_string());
         let git_inv_colors = [
-            "#6437cb", "#8500cc", "#4e2aa5", "#3754cb", "#379ecb", "#37cbad", "#cb379e",
-            "#cb6437",
+            "#6437cb", "#8500cc", "#4e2aa5", "#3754cb", "#379ecb", "#37cbad", "#cb379e", "#cb6437",
         ]
         .map(|value| value.to_string());
         Self {
@@ -351,19 +347,17 @@ impl Theme {
         // theme-neutral.js maps pie1..pie11 onto its fixed grey cScale1..11
         // and wraps pie12 back to cScale0 (#555).
         let pie_colors = [
-            "#f4f4f4", "#555555", "#bbbbbb", "#777777", "#999999", "#dddddd", "#ffffff",
-            "#dddddd", "#bbbbbb", "#999999", "#777777", "#555555",
+            "#f4f4f4", "#555555", "#bbbbbb", "#777777", "#999999", "#dddddd", "#ffffff", "#dddddd",
+            "#bbbbbb", "#999999", "#777777", "#555555",
         ]
         .map(|value| value.to_string());
         // git0 = darken(pie1, 25), git1..7 = pie2..8
         let git_colors = [
-            "#b4b4b4", "#555555", "#bbbbbb", "#777777", "#999999", "#dddddd", "#ffffff",
-            "#dddddd",
+            "#b4b4b4", "#555555", "#bbbbbb", "#777777", "#999999", "#dddddd", "#ffffff", "#dddddd",
         ]
         .map(|value| value.to_string());
         let git_inv_colors = [
-            "#4b4b4b", "#aaaaaa", "#444444", "#888888", "#666666", "#222222", "#000000",
-            "#222222",
+            "#4b4b4b", "#aaaaaa", "#444444", "#888888", "#666666", "#222222", "#000000", "#222222",
         ]
         .map(|value| value.to_string());
         Self {
@@ -575,10 +569,7 @@ mod tests {
     #[test]
     fn theme_from_name_resolves_builtin_presets() {
         assert_eq!(Theme::from_name("dark").unwrap().background, "#333333");
-        assert_eq!(
-            Theme::from_name("forest").unwrap().primary_color,
-            "#cde498"
-        );
+        assert_eq!(Theme::from_name("forest").unwrap().primary_color, "#cde498");
         assert_eq!(
             Theme::from_name("neutral").unwrap().primary_color,
             "#eeeeee"

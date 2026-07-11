@@ -70,19 +70,25 @@ fn est_text_width(text: &str, font_size: f32) -> f32 {
 struct LegendRow {
     name: String,
     color: String,
-    box_rect: Rect,     // absolute coords
-    text_bbox: Rect,    // absolute coords, estimated width
+    box_rect: Rect,  // absolute coords
+    text_bbox: Rect, // absolute coords, estimated width
 }
 
 fn parse_legend(svg: &str) -> Vec<LegendRow> {
     let (tx, ty) = radar_translate(svg);
     let rects: Vec<&str> = tags(svg, "rect")
         .into_iter()
-        .filter(|t| attr(t, "fill-opacity").as_deref() == Some("0.5") && attr(t, "width").as_deref() == Some("12"))
+        .filter(|t| {
+            attr(t, "fill-opacity").as_deref() == Some("0.5")
+                && attr(t, "width").as_deref() == Some("12")
+        })
         .collect();
     let texts: Vec<&str> = tags(svg, "text")
         .into_iter()
-        .filter(|t| attr(t, "dominant-baseline").as_deref() == Some("hanging") && attr(t, "text-anchor").as_deref() == Some("start"))
+        .filter(|t| {
+            attr(t, "dominant-baseline").as_deref() == Some("hanging")
+                && attr(t, "text-anchor").as_deref() == Some("start")
+        })
         .collect();
     let mut rows = Vec::new();
     for (r, t) in rects.iter().zip(texts.iter()) {
@@ -99,8 +105,18 @@ fn parse_legend(svg: &str) -> Vec<LegendRow> {
         let fs: f32 = attr_f(t, "font-size").unwrap_or(12.0);
         rows.push(LegendRow {
             color: attr(r, "fill").unwrap_or_default(),
-            box_rect: Rect { x: bx, y: by, w: bw, h: bh },
-            text_bbox: Rect { x: tx0, y: ty0, w: est_text_width(&name, fs), h: fs },
+            box_rect: Rect {
+                x: bx,
+                y: by,
+                w: bw,
+                h: bh,
+            },
+            text_bbox: Rect {
+                x: tx0,
+                y: ty0,
+                w: est_text_width(&name, fs),
+                h: fs,
+            },
             name,
         });
     }
@@ -147,12 +163,15 @@ fn seg_intersects_rect(a: (f32, f32), b: (f32, f32), r: &Rect) -> bool {
 }
 
 fn segs_cross(p1: (f32, f32), p2: (f32, f32), p3: (f32, f32), p4: (f32, f32)) -> bool {
-    let d = |a: (f32, f32), b: (f32, f32), c: (f32, f32)| (b.0 - a.0) * (c.1 - a.1) - (b.1 - a.1) * (c.0 - a.0);
+    let d = |a: (f32, f32), b: (f32, f32), c: (f32, f32)| {
+        (b.0 - a.0) * (c.1 - a.1) - (b.1 - a.1) * (c.0 - a.0)
+    };
     let d1 = d(p3, p4, p1);
     let d2 = d(p3, p4, p2);
     let d3 = d(p1, p2, p3);
     let d4 = d(p1, p2, p4);
-    ((d1 > 0.0 && d2 < 0.0) || (d1 < 0.0 && d2 > 0.0)) && ((d3 > 0.0 && d4 < 0.0) || (d3 < 0.0 && d4 > 0.0))
+    ((d1 > 0.0 && d2 < 0.0) || (d1 < 0.0 && d2 > 0.0))
+        && ((d3 > 0.0 && d4 < 0.0) || (d3 < 0.0 && d4 > 0.0))
 }
 
 fn point_in_poly(p: (f32, f32), poly: &[(f32, f32)]) -> bool {
@@ -177,7 +196,11 @@ fn analyze(label: &str, source: &str) {
     println!("viewBox: {} {} {} {}", vx, vy, vw, vh);
     let legend = parse_legend(&svg);
     let curves = parse_curves(&svg);
-    println!("legend rows: {}, curve polys: {}", legend.len(), curves.len());
+    println!(
+        "legend rows: {}, curve polys: {}",
+        legend.len(),
+        curves.len()
+    );
 
     // 1. Vertical overflow
     let mut overflow_rows = 0;
@@ -189,7 +212,11 @@ fn analyze(label: &str, source: &str) {
             overflow_rows += 1;
             println!(
                 "  ROW {} '{}' overflows bottom by {:.1}px (row bottom {:.1} > viewBox bottom {:.1})",
-                i, row.name, over, bottom.max(tbottom), vy + vh
+                i,
+                row.name,
+                over,
+                bottom.max(tbottom),
+                vy + vh
             );
         }
     }
@@ -211,7 +238,12 @@ fn analyze(label: &str, source: &str) {
         if over > 0.0 {
             println!(
                 "  ROW {} '{}' est. clips right edge by {:.1}px (text {:.1}..{:.1} vs viewBox right {:.1})",
-                i, row.name, over, row.text_bbox.x, right, vx + vw
+                i,
+                row.name,
+                over,
+                row.text_bbox.x,
+                right,
+                vx + vw
             );
         }
     }
@@ -235,7 +267,12 @@ fn analyze(label: &str, source: &str) {
             seen.push(&row.color);
         }
     }
-    println!("  distinct colors: {} of {} rows ({} duplicates)", seen.len(), legend.len(), dups);
+    println!(
+        "  distinct colors: {} of {} rows ({} duplicates)",
+        seen.len(),
+        legend.len(),
+        dups
+    );
 
     // 4. Curve geometry overlapping legend rows
     for (ci, poly) in curves.iter().enumerate() {
@@ -275,20 +312,37 @@ fn analyze(label: &str, source: &str) {
         }
     }
     if !curves.is_empty() {
-        println!("  curve extent: max x {:.1}, min y {:.1} (viewBox right {:.1}, top {:.1})", maxx, miny, vx + vw, vy);
+        println!(
+            "  curve extent: max x {:.1}, min y {:.1} (viewBox right {:.1}, top {:.1})",
+            maxx,
+            miny,
+            vx + vw,
+            vy
+        );
     }
 }
 
 fn many_curves(n: usize) -> String {
     let mut s = String::from("radar-beta\n  axis A, B, C, D, E\n");
     for i in 0..n {
-        s.push_str(&format!("  curve Curve{:02} {{{},{},{},{},{}}}\n", i, 1 + i % 5, 2 + i % 4, 3 + i % 3, 1 + i % 4, 2 + i % 5));
+        s.push_str(&format!(
+            "  curve Curve{:02} {{{},{},{},{},{}}}\n",
+            i,
+            1 + i % 5,
+            2 + i % 4,
+            3 + i % 3,
+            1 + i % 4,
+            2 + i % 5
+        ));
     }
     s
 }
 
 fn main() {
-    analyze("baseline 3 curves", "radar-beta\n  axis Speed, Quality, Cost, Support, Docs\n  curve Alpha {4,3,4,2,5}\n  curve Beta {3,4,3,4,3}\n  curve Gamma {5,2,5,3,4}\n");
+    analyze(
+        "baseline 3 curves",
+        "radar-beta\n  axis Speed, Quality, Cost, Support, Docs\n  curve Alpha {4,3,4,2,5}\n  curve Beta {3,4,3,4,3}\n  curve Gamma {5,2,5,3,4}\n",
+    );
 
     analyze("14 curves", &many_curves(14));
     analyze("26 curves", &many_curves(26));

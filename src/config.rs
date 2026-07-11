@@ -3960,7 +3960,6 @@ pub fn merge_init_config(mut config: Config, init: serde_json::Value) -> Config 
     config
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

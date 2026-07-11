@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 use crate::config::LayoutConfig;
 use crate::ir::{DiagramKind, Graph};
 
-use super::super::{EdgeLayout, NodeLayout, TextBlock, resolve_edge_style};
 use super::super::types::SubgraphLayout;
+use super::super::{EdgeLayout, NodeLayout, TextBlock, resolve_edge_style};
 use super::path_cleanup::{
     deoverlap_flowchart_paths, detour_flowchart_paths_around_foreign_subgraphs,
     detour_flowchart_paths_around_non_endpoint_nodes, reduce_orthogonal_path_crossings,

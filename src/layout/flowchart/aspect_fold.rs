@@ -123,15 +123,20 @@ pub(in crate::layout) fn apply_aspect_ratio_band_fold(
         crossings: straight_line_crossings(layout_edges, nodes),
     };
 
-    let mut best: Option<(FoldScore, usize, BTreeMap<String, NodeLayout>, HashMap<String, usize>)> =
-        None;
+    let mut best: Option<(
+        FoldScore,
+        usize,
+        BTreeMap<String, NodeLayout>,
+        HashMap<String, usize>,
+    )> = None;
     for band_count in candidate_band_counts(natural_ratio, goal, ranks.len()) {
         let ranges = plan_band_ranges(&extents, band_count, &allowed_boundaries);
         if ranges.len() != band_count {
             continue;
         }
         let mut candidate_nodes = nodes.clone();
-        let node_bands = apply_fold_to_nodes(&ranges, &extents, &ranks, &mut candidate_nodes, gutter);
+        let node_bands =
+            apply_fold_to_nodes(&ranges, &extents, &ranks, &mut candidate_nodes, gutter);
         let Some(aspect_error) = layout_aspect_error(&candidate_nodes, goal) else {
             continue;
         };
@@ -325,11 +330,7 @@ fn subgraph_safe_boundaries(graph: &Graph, ranks: &[Vec<String>]) -> Vec<bool> {
         if min_rank == usize::MAX {
             continue;
         }
-        for flag in allowed
-            .iter_mut()
-            .take(max_rank + 1)
-            .skip(min_rank + 1)
-        {
+        for flag in allowed.iter_mut().take(max_rank + 1).skip(min_rank + 1) {
             *flag = false;
         }
     }
@@ -727,10 +728,7 @@ mod tests {
             .rev()
             .find(|id| outcome.node_bands[**id] == 0)
             .unwrap();
-        let first_of_band1 = ids
-            .iter()
-            .find(|id| outcome.node_bands[**id] == 1)
-            .unwrap();
+        let first_of_band1 = ids.iter().find(|id| outcome.node_bands[**id] == 1).unwrap();
         let cx = |map: &BTreeMap<String, NodeLayout>, id: &str| {
             let n = &map[id];
             n.x + n.width / 2.0

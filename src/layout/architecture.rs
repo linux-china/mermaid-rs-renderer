@@ -437,6 +437,7 @@ pub(super) fn compute_architecture_layout(
         }
 
         subgraphs.push(SubgraphLayout {
+            id: sub.id.clone(),
             label: sub.label.clone(),
             label_block,
             nodes: sub

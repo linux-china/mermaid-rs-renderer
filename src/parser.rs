@@ -902,7 +902,13 @@ fn parse_state_id_with_classes(input: &str) -> (String, Vec<String>) {
     (strip_quotes(base.trim()), classes)
 }
 
-fn parse_state_note(line: &str) -> Option<(crate::ir::StateNotePosition, String, String)> {
+/// Parses a `note left of X` / `note right of X` line.
+///
+/// Returns the note position, raw target text, and the inline label when the
+/// line uses the inline `: text` form. A `None` label indicates the block
+/// form header (`note right of X` ... `end note`), whose body lines are
+/// collected by the caller until the closing `end note`.
+fn parse_state_note(line: &str) -> Option<(crate::ir::StateNotePosition, String, Option<String>)> {
     let trimmed = line.trim();
     let lower = trimmed.to_ascii_lowercase();
     if !lower.starts_with("note ") {
@@ -917,13 +923,23 @@ fn parse_state_note(line: &str) -> Option<(crate::ir::StateNotePosition, String,
     } else {
         return None;
     };
-    let (target, label) = targets_part.split_once(':')?;
-    let target = target.trim();
-    let label = label.trim();
-    if target.is_empty() || label.is_empty() {
-        return None;
+    match targets_part.split_once(':') {
+        Some((target, label)) => {
+            let target = target.trim();
+            let label = label.trim();
+            if target.is_empty() || label.is_empty() {
+                return None;
+            }
+            Some((position, target.to_string(), Some(label.to_string())))
+        }
+        None => {
+            let target = targets_part.trim();
+            if target.is_empty() {
+                return None;
+            }
+            Some((position, target.to_string(), None))
+        }
     }
-    Some((position, target.to_string(), label.to_string()))
 }
 
 fn parse_state_transition(line: &str) -> Option<(String, EdgeMeta, String, Option<String>)> {
@@ -4729,6 +4745,9 @@ fn parse_state_diagram(input: &str) -> Result<ParseOutput> {
 
     let mut composite_stack: Vec<CompositeContext> = Vec::new();
     let mut pending: VecDeque<String> = lines.into();
+    // Active block-form note (`note right of X` ... `end note`): position,
+    // raw target text, and collected body lines.
+    let mut pending_note: Option<(crate::ir::StateNotePosition, String, Vec<String>)> = None;
 
     let record_region_node = |stack: &mut [CompositeContext], node_id: &str| {
         for ctx in stack.iter_mut() {
@@ -4742,6 +4761,47 @@ fn parse_state_diagram(input: &str) -> Result<ParseOutput> {
             let region = &mut ctx.regions[ctx.current_region];
             region.push(node_id.to_string());
         }
+    };
+
+    let commit_state_note = |graph: &mut Graph,
+                             labels: &HashMap<String, String>,
+                             descriptions: &HashMap<String, Vec<String>>,
+                             subgraph_stack: &[usize],
+                             composite_stack: &mut [CompositeContext],
+                             position: crate::ir::StateNotePosition,
+                             target_raw: &str,
+                             label: String| {
+        let (target, classes) = parse_state_id_with_classes(target_raw);
+        if target.is_empty() || label.is_empty() {
+            return;
+        }
+        let shape = if graph.nodes.contains_key(&target) {
+            None
+        } else {
+            Some(crate::ir::NodeShape::RoundRect)
+        };
+        graph.ensure_node(
+            &target,
+            state_display_label_option(&target, labels, descriptions),
+            shape,
+        );
+        apply_node_classes(graph, &target, &classes);
+        graph.state_notes.push(crate::ir::StateNote {
+            position,
+            target: target.clone(),
+            label,
+        });
+        add_node_to_subgraphs(graph, subgraph_stack, &target);
+        record_region_node(composite_stack, &target);
+    };
+
+    let is_end_note = |line: &str| {
+        let mut words = line.split_whitespace();
+        matches!(
+            (words.next(), words.next(), words.next()),
+            (Some(end), Some(note), None)
+                if end.eq_ignore_ascii_case("end") && note.eq_ignore_ascii_case("note")
+        )
     };
 
     let finalize_regions =
@@ -4784,6 +4844,25 @@ fn parse_state_diagram(input: &str) -> Result<ParseOutput> {
         for raw_statement in split_statements(&raw_line) {
             let raw_line = raw_statement.trim();
             if raw_line.is_empty() {
+                continue;
+            }
+            // Inside a block-form note, collect raw body lines until `end note`.
+            if let Some((position, target_raw, mut note_lines)) = pending_note.take() {
+                if is_end_note(raw_line) {
+                    commit_state_note(
+                        &mut graph,
+                        &labels,
+                        &descriptions,
+                        &subgraph_stack,
+                        &mut composite_stack,
+                        position,
+                        &target_raw,
+                        note_lines.join("\n"),
+                    );
+                } else {
+                    note_lines.push(raw_line.to_string());
+                    pending_note = Some((position, target_raw, note_lines));
+                }
                 continue;
             }
             let (line, state_shape, label_override) = parse_state_stereotype(raw_line);
@@ -4895,6 +4974,15 @@ fn parse_state_diagram(input: &str) -> Result<ParseOutput> {
                     .and_then(|&idx| graph.subgraphs.get(idx))
                     .and_then(|sub| sub.id.clone())
                     .unwrap_or_else(|| "root".to_string());
+                // Concurrent regions ('--') get their own [*] scope so each
+                // region keeps an independent start/end pseudostate instead
+                // of merging into one shared fork/join node.
+                let scope = match composite_stack.last() {
+                    Some(ctx) if ctx.current_region > 0 => {
+                        format!("{}::r{}", scope, ctx.current_region)
+                    }
+                    _ => scope,
+                };
                 let (left_token, left_classes) = split_inline_classes(&left);
                 let (right_token, right_classes) = split_inline_classes(&right);
                 let (left_id, left_shape, left_label_override) = normalize_state_token(
@@ -4971,28 +5059,20 @@ fn parse_state_diagram(input: &str) -> Result<ParseOutput> {
             }
 
             if let Some((position, target_raw, label)) = parse_state_note(line) {
-                let (target, classes) = parse_state_id_with_classes(&target_raw);
-                if target.is_empty() {
-                    continue;
+                match label {
+                    Some(label) => commit_state_note(
+                        &mut graph,
+                        &labels,
+                        &descriptions,
+                        &subgraph_stack,
+                        &mut composite_stack,
+                        position,
+                        &target_raw,
+                        label,
+                    ),
+                    // Block form: collect body lines until `end note`.
+                    None => pending_note = Some((position, target_raw, Vec::new())),
                 }
-                let shape = if graph.nodes.contains_key(&target) {
-                    None
-                } else {
-                    Some(crate::ir::NodeShape::RoundRect)
-                };
-                graph.ensure_node(
-                    &target,
-                    state_display_label_option(&target, &labels, &descriptions),
-                    shape,
-                );
-                apply_node_classes(&mut graph, &target, &classes);
-                graph.state_notes.push(crate::ir::StateNote {
-                    position,
-                    target: target.clone(),
-                    label,
-                });
-                add_node_to_subgraphs(&mut graph, &subgraph_stack, &target);
-                record_region_node(&mut composite_stack, &target);
                 continue;
             }
 
@@ -5011,6 +5091,21 @@ fn parse_state_diagram(input: &str) -> Result<ParseOutput> {
                 continue;
             }
         }
+    }
+
+    // Unterminated block note at end of input: keep the collected text rather
+    // than dropping it silently.
+    if let Some((position, target_raw, note_lines)) = pending_note.take() {
+        commit_state_note(
+            &mut graph,
+            &labels,
+            &descriptions,
+            &subgraph_stack,
+            &mut composite_stack,
+            position,
+            &target_raw,
+            note_lines.join("\n"),
+        );
     }
 
     // Convert scoped [*] fan-out/fan-in nodes into fork/join bars.
@@ -5376,9 +5471,10 @@ fn add_node_to_subgraphs(graph: &mut Graph, subgraph_stack: &[usize], node_id: &
     // subgraph node sets overlap and their boxes are forced to overlap.
     // Membership in the current stack chain (ancestors) is fine: that is how
     // nested subgraphs are represented here.
-    let claimed_elsewhere = graph.subgraphs.iter().enumerate().any(|(idx, sub)| {
-        !subgraph_stack.contains(&idx) && sub.nodes.iter().any(|n| n == node_id)
-    });
+    let claimed_elsewhere =
+        graph.subgraphs.iter().enumerate().any(|(idx, sub)| {
+            !subgraph_stack.contains(&idx) && sub.nodes.iter().any(|n| n == node_id)
+        });
     if claimed_elsewhere {
         return;
     }
@@ -7369,6 +7465,67 @@ A["foo & bar"] & B --> C"#;
         assert_eq!(note.target, "Idle");
         assert_eq!(note.label, "waiting");
         assert_eq!(note.position, crate::ir::StateNotePosition::RightOf);
+    }
+
+    #[test]
+    fn parse_state_note_block_right() {
+        let input =
+            "stateDiagram-v2\nstate Idle\nnote right of Idle\nfirst line\nsecond line\nend note";
+        let parsed = parse_mermaid(input).unwrap();
+        assert_eq!(parsed.graph.state_notes.len(), 1);
+        let note = &parsed.graph.state_notes[0];
+        assert_eq!(note.target, "Idle");
+        assert_eq!(note.label, "first line\nsecond line");
+        assert_eq!(note.position, crate::ir::StateNotePosition::RightOf);
+    }
+
+    #[test]
+    fn parse_state_note_block_left() {
+        let input = "stateDiagram-v2\nstate Active\nnote left of Active\nonly line\nend note\nActive --> Done";
+        let parsed = parse_mermaid(input).unwrap();
+        assert_eq!(parsed.graph.state_notes.len(), 1);
+        let note = &parsed.graph.state_notes[0];
+        assert_eq!(note.target, "Active");
+        assert_eq!(note.label, "only line");
+        assert_eq!(note.position, crate::ir::StateNotePosition::LeftOf);
+        // Statements after `end note` are parsed normally.
+        assert_eq!(parsed.graph.edges.len(), 1);
+        assert!(parsed.graph.nodes.contains_key("Done"));
+    }
+
+    #[test]
+    fn parse_state_note_block_body_not_parsed_as_statements() {
+        // Body lines that look like transitions or states must stay note text.
+        let input = "stateDiagram-v2\nstate Idle\nnote right of Idle\nA --> B\nstate C\nend note";
+        let parsed = parse_mermaid(input).unwrap();
+        assert_eq!(parsed.graph.state_notes.len(), 1);
+        assert_eq!(parsed.graph.state_notes[0].label, "A --> B\nstate C");
+        assert!(parsed.graph.edges.is_empty());
+        assert!(!parsed.graph.nodes.contains_key("A"));
+        assert!(!parsed.graph.nodes.contains_key("C"));
+    }
+
+    #[test]
+    fn parse_state_note_block_composite_target() {
+        let input = "stateDiagram-v2\ndirection LR\nstate Comp {\n[*] --> Inner\n}\nnote right of Comp\nnote body\nend note";
+        let parsed = parse_mermaid(input).unwrap();
+        assert_eq!(parsed.graph.state_notes.len(), 1);
+        let note = &parsed.graph.state_notes[0];
+        assert_eq!(note.target, "Comp");
+        assert_eq!(note.label, "note body");
+        assert_eq!(parsed.graph.direction, crate::ir::Direction::LeftRight);
+    }
+
+    #[test]
+    fn parse_state_note_block_unterminated_keeps_text() {
+        let input = "stateDiagram-v2\nstate Idle\nnote left of Idle\ndangling text";
+        let parsed = parse_mermaid(input).unwrap();
+        assert_eq!(parsed.graph.state_notes.len(), 1);
+        assert_eq!(parsed.graph.state_notes[0].label, "dangling text");
+        assert_eq!(
+            parsed.graph.state_notes[0].position,
+            crate::ir::StateNotePosition::LeftOf
+        );
     }
 
     #[test]

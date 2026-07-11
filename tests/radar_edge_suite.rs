@@ -69,15 +69,13 @@ fn assert_at_center(actual: (f32, f32), what: &str) {
 
 /// Whether the radar renders an axis label with this exact text.
 fn has_axis_label(svg: &str, axis: &str) -> bool {
-    svg.split("<text ")
-        .skip(1)
-        .any(|chunk| {
-            chunk.contains("dominant-baseline=\"middle\"")
-                && chunk
-                    .split_once('>')
-                    .map(|(_, rest)| rest.starts_with(&format!("{axis}</text>")))
-                    .unwrap_or(false)
-        })
+    svg.split("<text ").skip(1).any(|chunk| {
+        chunk.contains("dominant-baseline=\"middle\"")
+            && chunk
+                .split_once('>')
+                .map(|(_, rest)| rest.starts_with(&format!("{axis}</text>")))
+                .unwrap_or(false)
+    })
 }
 
 // ====================================================================
@@ -107,7 +105,10 @@ fn nonnumeric_value_in_first_curve_keeps_axis_chart_wide() {
         );
     }
     assert!(has_axis_label(&svg, "A"), "axis A should render");
-    assert!(has_axis_label(&svg, "B"), "axis B must survive Alpha's bad value");
+    assert!(
+        has_axis_label(&svg, "B"),
+        "axis B must survive Alpha's bad value"
+    );
     assert!(has_axis_label(&svg, "C"), "axis C should render");
     // Alpha's bad B token sits at the center; Beta's valid B=2 survives.
     // max=5 => scale 60. Alpha B at center; Beta A=1 -> r=60 at -90deg.
@@ -216,7 +217,11 @@ fn named_entries_reordered_map_to_correct_axes_by_name() {
 "#;
     let (_, svg) = render(input);
     let paths = curve_paths(&svg);
-    assert_eq!(paths.len(), 2, "named curve must render, not silently vanish");
+    assert_eq!(
+        paths.len(),
+        2,
+        "named curve must render, not silently vanish"
+    );
     let beta = path_points(paths[1]);
     assert_eq!(beta.len(), 3);
     // max=9 => scale 300/9. Beta by declared axis order: A=3, B=6, C=9.
@@ -602,7 +607,10 @@ fn radar_config_directives_flow_to_renderer() {
     assert_eq!(graph.radar.max, Some(10.0));
     assert_eq!(graph.radar.min, Some(2.0));
     assert_eq!(graph.radar.ticks, Some(4));
-    assert_eq!(graph.radar.graticule, mermaid_rs_renderer::RadarGraticule::Polygon);
+    assert_eq!(
+        graph.radar.graticule,
+        mermaid_rs_renderer::RadarGraticule::Polygon
+    );
 
     // Polygon graticule: grid rings render as paths with fill-opacity 0.3.
     let grid_rings = svg

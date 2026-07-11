@@ -13,7 +13,8 @@ use mermaid_rs_renderer::layout::{Layout, compute_layout, validate_layout_invari
 use mermaid_rs_renderer::parser::parse_mermaid;
 use mermaid_rs_renderer::theme::Theme;
 
-const CHAIN_LR: &str = "flowchart LR\n  A[Start] --> B[Parse] --> C[Layout] --> D[Route] --> E[Render] --> F[Done]\n";
+const CHAIN_LR: &str =
+    "flowchart LR\n  A[Start] --> B[Parse] --> C[Layout] --> D[Route] --> E[Render] --> F[Done]\n";
 const GOAL_4_3: f32 = 4.0 / 3.0;
 
 fn layout_with_goal(source: &str, goal: Option<f32>) -> Layout {

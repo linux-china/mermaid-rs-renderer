@@ -37,7 +37,10 @@ pub(crate) fn pie_label_is_outside(arc_len: f32, percent_width: f32, span: f32) 
 /// Horizontal extent of an outside label measured from the pie center,
 /// including the label background rect padding.
 pub(crate) fn pie_outside_label_extent(radius: f32, font_size: f32, label_width: f32) -> f32 {
-    radius + pie_outside_label_bump(font_size, radius) + label_width + pie_outside_label_pad_x(font_size)
+    radius
+        + pie_outside_label_bump(font_size, radius)
+        + label_width
+        + pie_outside_label_pad_x(font_size)
 }
 
 fn sanitize_pie_value(value: f32) -> f32 {
@@ -202,11 +205,8 @@ pub(super) fn compute_pie_layout(graph: &Graph, theme: &Theme, config: &LayoutCo
             if !outside {
                 continue;
             }
-            let extent = pie_outside_label_extent(
-                radius,
-                theme.pie_section_text_size,
-                slice.label.width,
-            );
+            let extent =
+                pie_outside_label_extent(radius, theme.pie_section_text_size, slice.label.width);
             let mid_angle = (slice.start_angle + slice.end_angle) / 2.0;
             if mid_angle.cos() >= 0.0 {
                 right_outside_extent = right_outside_extent.max(extent);
@@ -222,14 +222,13 @@ pub(super) fn compute_pie_layout(graph: &Graph, theme: &Theme, config: &LayoutCo
         .as_ref()
         .map(|text| text.width / 2.0)
         .unwrap_or(0.0);
-    let left_needed = (left_outside_extent + pie_cfg.margin * 0.35)
-        .max(title_half_width + pie_cfg.margin * 0.25);
+    let left_needed =
+        (left_outside_extent + pie_cfg.margin * 0.35).max(title_half_width + pie_cfg.margin * 0.25);
     let left_shift = (left_needed - center_x).max(0.0);
     center_x += left_shift;
 
     let legend_x = center_x
-        + (radius + pie_cfg.margin * 0.6)
-            .max(right_outside_extent + pie_cfg.margin * 0.35);
+        + (radius + pie_cfg.margin * 0.6).max(right_outside_extent + pie_cfg.margin * 0.35);
 
     for (idx, (label, color)) in legend_items.into_iter().enumerate() {
         let vertical = idx as f32 * legend_item_height - legend_offset;

@@ -6,7 +6,7 @@ use crate::layout::label_placement::{
 };
 use crate::layout::{
     C4BoundaryLayout, C4Layout, C4RelLayout, C4ShapeLayout, DiagramData, ErrorLayout,
-    GitGraphLayout, JourneyLayout, Layout, PieData, SankeyLayout, TextBlock,
+    GitGraphLayout, JourneyLayout, Layout, PieData, SankeyLayout, SubgraphLayout, TextBlock,
 };
 use crate::text_metrics;
 use crate::theme::{Theme, adjust_color, parse_color_to_hsl};
@@ -453,6 +453,15 @@ pub fn render_svg_with_dimensions(
         return svg;
     }
 
+    // Concurrent-region dividers for state composites: for each state
+    // composite that contains `__region_*__` child groups, draw a separator
+    // line between adjacent region bands (upstream mermaid parity).
+    let state_region_dividers: Vec<String> = if is_state {
+        compute_state_region_dividers(layout, theme)
+    } else {
+        Vec::new()
+    };
+
     for subgraph in &layout.subgraphs {
         let label_empty = subgraph.label.trim().is_empty();
         if is_state {
@@ -597,6 +606,10 @@ pub fn render_svg_with_dimensions(
                 ));
             }
         }
+    }
+
+    for divider in &state_region_dividers {
+        svg.push_str(divider);
     }
 
     let overlay_flowchart = layout.kind == crate::ir::DiagramKind::Flowchart;
@@ -1611,6 +1624,138 @@ pub fn render_svg_with_dimensions(
 
     svg.push_str("</svg>");
     svg
+}
+
+/// State-diagram concurrent regions: draw a separator line between adjacent
+/// `__region_*__` bands inside their parent composite, matching upstream
+/// mermaid's region divider. Regions are invisible group boxes, so the
+/// divider sits at the midpoint of the gap between neighboring region
+/// bounding boxes and spans the parent composite's full inner extent.
+fn compute_state_region_dividers(layout: &Layout, theme: &Theme) -> Vec<String> {
+    let is_region = |sub: &SubgraphLayout| {
+        sub.label.trim().is_empty()
+            && sub
+                .id
+                .as_deref()
+                .map(|id| id.starts_with("__region_"))
+                .unwrap_or(false)
+    };
+
+    let mut dividers = Vec::new();
+    let node_sets: Vec<std::collections::HashSet<&str>> = layout
+        .subgraphs
+        .iter()
+        .map(|sub| sub.nodes.iter().map(String::as_str).collect())
+        .collect();
+
+    // Map each region to its smallest non-region parent by node containment.
+    let mut parent_regions: HashMap<usize, Vec<usize>> = HashMap::new();
+    for (idx, sub) in layout.subgraphs.iter().enumerate() {
+        if !is_region(sub) {
+            continue;
+        }
+        let mut parent: Option<usize> = None;
+        for (candidate_idx, candidate) in layout.subgraphs.iter().enumerate() {
+            if candidate_idx == idx
+                || is_region(candidate)
+                || node_sets[candidate_idx].len() <= node_sets[idx].len()
+                || !node_sets[idx].is_subset(&node_sets[candidate_idx])
+            {
+                continue;
+            }
+            match parent {
+                None => parent = Some(candidate_idx),
+                Some(current) => {
+                    if node_sets[candidate_idx].len() < node_sets[current].len() {
+                        parent = Some(candidate_idx);
+                    }
+                }
+            }
+        }
+        if let Some(parent_idx) = parent {
+            parent_regions.entry(parent_idx).or_default().push(idx);
+        }
+    }
+
+    for (parent_idx, mut regions) in parent_regions {
+        if regions.len() < 2 {
+            continue;
+        }
+        let parent = &layout.subgraphs[parent_idx];
+        let stroke = parent
+            .style
+            .stroke
+            .clone()
+            .filter(|value| value != "none")
+            .unwrap_or_else(|| theme.primary_border_color.clone());
+        let header_h = if parent.label.trim().is_empty() {
+            0.0
+        } else {
+            (parent.label_block.height + theme.font_size * 0.75).max(theme.font_size * 1.4)
+        };
+
+        // Determine the stacking axis: regions laid out side by side span a
+        // combined x-extent at least as wide as the sum of their widths
+        // (disjoint x-ranges); vertically stacked regions do the same in y.
+        let boxes: Vec<(f32, f32, f32, f32)> = regions
+            .iter()
+            .map(|&idx| {
+                let sub = &layout.subgraphs[idx];
+                (sub.x, sub.y, sub.x + sub.width, sub.y + sub.height)
+            })
+            .collect();
+        let min_x = boxes.iter().map(|b| b.0).fold(f32::MAX, f32::min);
+        let max_x = boxes.iter().map(|b| b.2).fold(f32::MIN, f32::max);
+        let min_y = boxes.iter().map(|b| b.1).fold(f32::MAX, f32::min);
+        let max_y = boxes.iter().map(|b| b.3).fold(f32::MIN, f32::max);
+        let disjoint_x = boxes.iter().map(|b| b.2 - b.0).sum::<f32>() <= (max_x - min_x) + 0.5;
+        let disjoint_y = boxes.iter().map(|b| b.3 - b.1).sum::<f32>() <= (max_y - min_y) + 0.5;
+        let stack_along_x = disjoint_x && !disjoint_y;
+
+        if stack_along_x {
+            regions.sort_by(|&a, &b| {
+                layout.subgraphs[a]
+                    .x
+                    .partial_cmp(&layout.subgraphs[b].x)
+                    .unwrap_or(Ordering::Equal)
+            });
+            for pair in regions.windows(2) {
+                let left = &layout.subgraphs[pair[0]];
+                let right = &layout.subgraphs[pair[1]];
+                let x = ((left.x + left.width) + right.x) / 2.0;
+                dividers.push(format!(
+                    "<line x1=\"{:.2}\" y1=\"{:.2}\" x2=\"{:.2}\" y2=\"{:.2}\" stroke=\"{}\" stroke-width=\"1\" stroke-dasharray=\"4 4\"/>",
+                    x,
+                    parent.y + header_h,
+                    x,
+                    parent.y + parent.height,
+                    stroke
+                ));
+            }
+        } else {
+            regions.sort_by(|&a, &b| {
+                layout.subgraphs[a]
+                    .y
+                    .partial_cmp(&layout.subgraphs[b].y)
+                    .unwrap_or(Ordering::Equal)
+            });
+            for pair in regions.windows(2) {
+                let upper = &layout.subgraphs[pair[0]];
+                let lower = &layout.subgraphs[pair[1]];
+                let y = ((upper.y + upper.height) + lower.y) / 2.0;
+                dividers.push(format!(
+                    "<line x1=\"{:.2}\" y1=\"{:.2}\" x2=\"{:.2}\" y2=\"{:.2}\" stroke=\"{}\" stroke-width=\"1\" stroke-dasharray=\"4 4\"/>",
+                    parent.x,
+                    y,
+                    parent.x + parent.width,
+                    y,
+                    stroke
+                ));
+            }
+        }
+    }
+
+    dividers
 }
 
 fn points_to_path(points: &[(f32, f32)]) -> String {
@@ -3743,6 +3888,25 @@ fn render_xychart(
         ));
     }
 
+    // X-axis label
+    if let Some(ref x_label) = layout.x_axis_label {
+        svg.push_str(&format!(
+            "<text x=\"{:.2}\" y=\"{:.2}\" text-anchor=\"middle\" font-family=\"{}\" font-size=\"{:.1}\" fill=\"{}\">{}</text>",
+            layout.plot_x + layout.plot_width / 2.0, layout.x_axis_label_y,
+            normalize_font_family(&theme.font_family), theme.font_size,
+            theme.primary_text_color,
+            escape_xml(&x_label.lines.join(" "))
+        ));
+    }
+
+    // Clip series marks to the plot area so out-of-range values do not
+    // escape the chart (matches upstream mermaid behavior).
+    svg.push_str(&format!(
+        "<defs><clipPath id=\"xychart-plot-clip\"><rect x=\"{:.2}\" y=\"{:.2}\" width=\"{:.2}\" height=\"{:.2}\"/></clipPath></defs>",
+        layout.plot_x, layout.plot_y, layout.plot_width, layout.plot_height
+    ));
+    svg.push_str("<g clip-path=\"url(#xychart-plot-clip)\">");
+
     // Bars
     for bar in &layout.bars {
         svg.push_str(&format!(
@@ -3770,15 +3934,17 @@ fn render_xychart(
                 "<path d=\"{}\" fill=\"none\" stroke=\"{}\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>",
                 path, escape_xml(&line.color)
             ));
-            // Draw points
-            for (x, y) in &line.points {
-                svg.push_str(&format!(
-                    "<circle cx=\"{:.2}\" cy=\"{:.2}\" r=\"4\" fill=\"{}\" stroke=\"white\" stroke-width=\"1\"/>",
-                    x, y, escape_xml(&line.color)
-                ));
-            }
+        }
+        // Draw vertex points even for single-point series.
+        for (x, y) in &line.points {
+            svg.push_str(&format!(
+                "<circle cx=\"{:.2}\" cy=\"{:.2}\" r=\"4\" fill=\"{}\" stroke=\"white\" stroke-width=\"1\"/>",
+                x, y, escape_xml(&line.color)
+            ));
         }
     }
+
+    svg.push_str("</g>");
 
     svg
 }
@@ -6027,8 +6193,9 @@ fn shape_svg(node: &crate::layout::NodeLayout, theme: &Theme, config: &LayoutCon
             let (circle_fill, circle_stroke) = if is_state_start {
                 (theme.line_color.as_str(), theme.line_color.as_str())
             } else if is_state_end {
+                // Final-state marker: outer ring stroke; the filled dot is added below.
                 (
-                    theme.primary_border_color.as_str(),
+                    theme.background.as_str(),
                     theme.primary_border_color.as_str(),
                 )
             } else if label_empty {
@@ -6055,27 +6222,35 @@ fn shape_svg(node: &crate::layout::NodeLayout, theme: &Theme, config: &LayoutCon
                 cx, cy, r, circle_fill, circle_stroke, stroke_width
             );
             if node.shape == crate::ir::NodeShape::DoubleCircle {
-                let r2 = r - 4.0;
-                if r2 > 0.0 {
-                    let inner_fill = if label_empty || is_state_end {
-                        theme.background.as_str()
-                    } else {
-                        "none"
-                    };
-                    let inner_stroke = if label_empty || is_state_end {
-                        theme.background.as_str()
-                    } else {
-                        circle_stroke
-                    };
-                    let inner_stroke_width = if label_empty || is_state_end {
-                        1.2
-                    } else {
-                        1.0
-                    };
-                    svg.push_str(&format!(
-                        "<circle cx=\"{:.2}\" cy=\"{:.2}\" r=\"{:.2}\" fill=\"{}\" stroke=\"{}\" stroke-width=\"{}\"{join}/>",
-                        cx, cy, r2, inner_fill, inner_stroke, inner_stroke_width
-                    ));
+                if is_state_end {
+                    // Filled inner dot to complete the final-state bullseye,
+                    // matching upstream mermaid (outer ring r, inner dot ~5/7 r).
+                    let r_dot = (r - 2.0).max(r * 0.5);
+                    if r_dot > 0.0 {
+                        svg.push_str(&format!(
+                            "<circle cx=\"{:.2}\" cy=\"{:.2}\" r=\"{:.2}\" fill=\"{}\" stroke=\"none\"{join}/>",
+                            cx, cy, r_dot, theme.primary_border_color
+                        ));
+                    }
+                } else {
+                    let r2 = r - 4.0;
+                    if r2 > 0.0 {
+                        let inner_fill = if label_empty {
+                            theme.background.as_str()
+                        } else {
+                            "none"
+                        };
+                        let inner_stroke = if label_empty {
+                            theme.background.as_str()
+                        } else {
+                            circle_stroke
+                        };
+                        let inner_stroke_width = if label_empty { 1.2 } else { 1.0 };
+                        svg.push_str(&format!(
+                            "<circle cx=\"{:.2}\" cy=\"{:.2}\" r=\"{:.2}\" fill=\"{}\" stroke=\"{}\" stroke-width=\"{}\"{join}/>",
+                            cx, cy, r2, inner_fill, inner_stroke, inner_stroke_width
+                        ));
+                    }
                 }
             }
             svg
@@ -6443,8 +6618,7 @@ mod tests {
         for i in 0..boxes.len() {
             for j in (i + 1)..boxes.len() {
                 let (a, b) = (&boxes[i], &boxes[j]);
-                let overlap =
-                    a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+                let overlap = a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
                 assert!(
                     !overlap,
                     "axis labels {:?} and {:?} overlap: ({:.1},{:.1})-({:.1},{:.1}) vs \
@@ -6520,10 +6694,9 @@ mod tests {
         let theme = Theme::modern();
         let config = LayoutConfig::default();
         // Short labels: historical minimum canvas.
-        let parsed = crate::parser::parse_mermaid(
-            "radar-beta\n  axis A, B, C\n  curve X {1,2,3}\n",
-        )
-        .unwrap();
+        let parsed =
+            crate::parser::parse_mermaid("radar-beta\n  axis A, B, C\n  curve X {1,2,3}\n")
+                .unwrap();
         let small = compute_layout(&parsed.graph, &theme, &config);
         assert!(
             small.width >= 2.0 * MIN_HALF_EXTENT - 0.01,

@@ -29,16 +29,20 @@ pub(in crate::layout) fn finalize_graph_layout(
         let note_pad_y = theme.font_size * STATE_NOTE_PAD_Y_SCALE;
         let note_gap = (theme.font_size * STATE_NOTE_GAP_SCALE).max(STATE_NOTE_GAP_MIN);
         for note in &graph.state_notes {
-            let Some(target) = nodes.get(&note.target) else {
+            // Composite state targets keep only a hidden anchor node inside
+            // their subgraph, so anchor the note to the subgraph bounds.
+            let Some((tx, ty, tw, th)) =
+                state_note_target_rect(&note.target, graph, &nodes, &subgraphs)
+            else {
                 continue;
             };
             let label = measure_label(&note.label, theme, config);
             let width = label.width + note_pad_x * 2.0;
             let height = label.height + note_pad_y * 2.0;
-            let y = target.y + target.height / 2.0 - height / 2.0;
+            let y = ty + th / 2.0 - height / 2.0;
             let x = match note.position {
-                crate::ir::StateNotePosition::LeftOf => target.x - note_gap - width,
-                crate::ir::StateNotePosition::RightOf => target.x + target.width + note_gap,
+                crate::ir::StateNotePosition::LeftOf => tx - note_gap - width,
+                crate::ir::StateNotePosition::RightOf => tx + tw + note_gap,
             };
             state_notes.push(StateNoteLayout {
                 x,
@@ -68,4 +72,34 @@ pub(in crate::layout) fn finalize_graph_layout(
         height,
         diagram: DiagramData::Graph { state_notes },
     }
+}
+
+/// Resolves the rectangle a state note should attach to.
+///
+/// Simple states resolve to their node layout. Composite states are laid out
+/// as subgraphs whose graph node is a hidden anchor, so notes targeting them
+/// attach to the subgraph bounds instead.
+fn state_note_target_rect(
+    target: &str,
+    graph: &Graph,
+    nodes: &BTreeMap<String, NodeLayout>,
+    subgraphs: &[SubgraphLayout],
+) -> Option<(f32, f32, f32, f32)> {
+    let node = nodes.get(target);
+    if let Some(node) = node
+        && !node.hidden
+    {
+        return Some((node.x, node.y, node.width, node.height));
+    }
+    let sub = graph.subgraphs.iter().find(|sub| {
+        sub.id.as_deref() == Some(target) || (!sub.label.is_empty() && sub.label == target)
+    });
+    if let Some(sub) = sub
+        && let Some(layout) = subgraphs
+            .iter()
+            .find(|layout| layout.label == sub.label && layout.nodes == sub.nodes)
+    {
+        return Some((layout.x, layout.y, layout.width, layout.height));
+    }
+    node.map(|node| (node.x, node.y, node.width, node.height))
 }

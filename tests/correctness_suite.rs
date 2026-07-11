@@ -327,16 +327,17 @@ fn text_contains_label(
     })
 }
 
-/// Synthetic nodes the layout engine inserts (state start/end pseudostates,
-/// edge-label dummies) carry internal ids and render as glyphs, not text.
-/// They are not part of the input's visible content.
-fn is_synthetic_node_id(id: &str) -> bool {
+/// Nodes represented entirely by glyph geometry do not contribute visible
+/// text and therefore must not participate in label-parity checks.
+fn is_non_text_node(node: &mermaid_rs_renderer::ir::Node) -> bool {
+    let id = node.id.as_str();
     id.starts_with("__start_")
         || id.starts_with("__end_")
         || id.starts_with("__elabel_")
         || id == "__start_root__"
         || id == "__end_root__"
         || (id.starts_with("__") && id.ends_with("__"))
+        || node.shape == mermaid_rs_renderer::ir::NodeShape::ForkJoin
 }
 
 /// Check that every node label and edge label appears in the rendered text.
@@ -369,7 +370,7 @@ fn check_label_parity(fixture: &str, graph: &Graph, svg: &str, findings: &mut Ve
         .collect();
 
     for node in graph.nodes.values() {
-        if is_synthetic_node_id(&node.id) {
+        if is_non_text_node(node) {
             continue;
         }
         let label = if node.label.trim().is_empty() {
@@ -556,9 +557,12 @@ fn viewbox_check_flags_nonpositive_size() {
 
 #[test]
 fn synthetic_state_nodes_are_excluded() {
-    assert!(is_synthetic_node_id("__start_root__"));
-    assert!(is_synthetic_node_id("__end_root__"));
-    assert!(is_synthetic_node_id("__start_Active__"));
-    assert!(!is_synthetic_node_id("Active"));
-    assert!(!is_synthetic_node_id("my_node"));
+    let graph = mermaid_rs_renderer::parse_mermaid(
+        "stateDiagram-v2\nstate Fork <<fork>>\nstate Active\n[*] --> Active",
+    )
+    .unwrap()
+    .graph;
+    assert!(is_non_text_node(graph.nodes.get("__start_root__").unwrap()));
+    assert!(is_non_text_node(graph.nodes.get("Fork").unwrap()));
+    assert!(!is_non_text_node(graph.nodes.get("Active").unwrap()));
 }

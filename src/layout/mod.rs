@@ -1442,8 +1442,7 @@ fn shape_size(
             let line_height = measure_font_size * config.label_line_height;
             let divider = req.divider_offset(theme.font_size, line_height);
             let body_lines = (label.lines.len() - 2) as f32;
-            let min_render_height =
-                divider + req.label_padding_y * 2.0 + body_lines * line_height;
+            let min_render_height = divider + req.label_padding_y * 2.0 + body_lines * line_height;
             height = height.max(min_render_height);
         }
     }
