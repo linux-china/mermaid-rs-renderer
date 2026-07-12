@@ -118,8 +118,8 @@ def dump_layout(binary: Path, source: Path, out_dir: Path) -> Optional[Path]:
     out_json = out_dir / (key + "-layout.json")
     out_svg = out_dir / (key + ".svg")
     res = subprocess.run(
-        [str(binary), "-i", str(source), "--dumpLayout", str(out_json),
-         "-o", str(out_svg), "-e", "svg"],
+        [str(binary), "-i", str(source), "--fastText",
+         "--dumpLayout", str(out_json), "-o", str(out_svg), "-e", "svg"],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
     )
     if res.returncode != 0 or not out_json.exists():

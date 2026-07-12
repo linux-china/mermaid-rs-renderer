@@ -201,6 +201,9 @@ fn no_goal_layout_identical_to_pre_fold_pipeline() {
     let expected = std::fs::read_to_string(&golden_path).expect(
         "golden file missing; run UPDATE_ASPECT_FOLD_GOLDEN=1 cargo test --test aspect_fold_suite",
     );
+    // Git may check text fixtures out with CRLF on Windows. Geometry goldens
+    // compare content, not the platform-specific working-tree line ending.
+    let expected = expected.replace("\r\n", "\n");
     assert_eq!(
         serialized, expected,
         "None-goal layout drifted from the pre-fold golden; if an unrelated \
