@@ -153,7 +153,7 @@ def bin_needs_rebuild(bin_path: Path):
 def build_release(bin_path: Path):
     if not bin_needs_rebuild(bin_path):
         return
-    res = run(["cargo", "build", "--release"])
+    res = run(["cargo", "build", "--locked", "--release"])
     if res.returncode != 0:
         raise RuntimeError(res.stderr.strip() or "cargo build failed")
 
@@ -210,7 +210,7 @@ def compute_metrics(files, bin_path, config_path, out_dir):
         ] + config_args
         res = run(cmd)
         if res.returncode != 0:
-            results[str(file)] = {"error": res.stderr.strip()[:200]}
+            results[stable_fixture_key(file)] = {"error": res.stderr.strip()[:200]}
             continue
         data, nodes, edges = layout_score.load_layout(layout_path)
         metrics = layout_score.compute_metrics(data, nodes, edges)
@@ -223,7 +223,7 @@ def compute_metrics(files, bin_path, config_path, out_dir):
         metrics["arrow_path_overlap_length"] = svg_metrics.get("svg_edge_overlap_length", 0.0)
         layout_data = json.loads(layout_path.read_text())
         metrics.update(quality_bench.compute_layout_anchor_metrics(layout_data.get("edges", [])))
-        results[str(file)] = metrics
+        results[stable_fixture_key(file)] = metrics
     return results
 
 
@@ -336,8 +336,8 @@ def main():
     baseline_path = Path(args.baseline)
     if args.write_baseline:
         payload = {
-            "config": str(config_path),
-            "fixtures": [str(f) for f in files],
+            "config": stable_fixture_key(config_path),
+            "fixtures": [stable_fixture_key(f) for f in files],
             "metrics": metrics,
         }
         baseline_path.write_text(json.dumps(payload, indent=2))

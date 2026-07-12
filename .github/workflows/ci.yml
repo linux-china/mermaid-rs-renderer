@@ -13,14 +13,27 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Lint GitHub Actions workflows
+        uses: docker://rhysd/actionlint:1.7.12
+      - name: Check shell scripts
+        run: |
+          shellcheck scripts/remote-cargo.sh .github/scripts/*.sh
+          bash -n scripts/remote-cargo.sh .github/scripts/*.sh
+      - name: Compile Python tooling
+        run: python3 -m compileall -q scripts
+      - name: Check repository documentation and tooling
+        run: python3 scripts/check_repo.py
       - run: cargo fmt -- --check
       - run: cargo clippy --all-targets --all-features -- -D warnings
       - run: cargo check --locked --no-default-features
       - run: cargo check --locked --no-default-features --features cli
       - run: cargo check --locked --no-default-features --features png
-      - run: cargo test --all-targets --all-features
-      - run: cargo test --no-default-features --lib
-      - run: cargo test --doc --all-features
+      - run: cargo test --locked --all-features --lib --bins --tests --examples
+      - run: cargo test --locked --no-default-features --lib
+      - run: cargo test --locked --doc --all-features
       - run: cargo package --locked
       - name: Test compile packaged crate
         run: |
@@ -35,6 +48,33 @@ jobs:
             --locked \
             --no-run
 
+  platform:
+    name: Platform (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --locked --all-features --lib --bins --tests --examples
+      - run: cargo test --locked --no-default-features --lib
+
+  nix:
+    name: Nix package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: cachix/install-nix-action@v31.10.7
+      - name: Evaluate all flake systems
+        run: nix flake check --all-systems --no-build --print-build-logs
+      - name: Build and smoke-test package
+        run: |
+          nix build .#packages.x86_64-linux.default --print-build-logs
+          ./result/bin/mmdr --version
+
   layout-quality-gate:
     runs-on: ubuntu-latest
     steps:
@@ -45,6 +85,6 @@ jobs:
         with:
           python-version: "3.x"
       - name: Build renderer
-        run: cargo build --release --features cli
+        run: cargo build --locked --release --features cli
       - name: Hard-gate (no new geometry violations vs baseline)
         run: python3 scripts/hard_gate.py

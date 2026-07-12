@@ -14,19 +14,19 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def run_timing(bin_path: Path, fixture: Path) -> dict:
-    with tempfile.NamedTemporaryFile(suffix=".svg", delete=False) as tmp:
-        out_path = tmp.name
-    cmd = [
-        str(bin_path),
-        "-i",
-        str(fixture),
-        "-o",
-        out_path,
-        "-e",
-        "svg",
-        "--timing",
-    ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    with tempfile.TemporaryDirectory(prefix="mmdr-profile-") as temp_dir:
+        out_path = Path(temp_dir) / "out.svg"
+        cmd = [
+            str(bin_path),
+            "-i",
+            str(fixture),
+            "-o",
+            str(out_path),
+            "-e",
+            "svg",
+            "--timing",
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError(result.stderr.strip() or f"mmdr failed for {fixture}")
     text = result.stderr.strip().splitlines()
@@ -64,10 +64,14 @@ def main() -> None:
         help="Filter fixtures by substring (repeatable)",
     )
     args = parser.parse_args()
+    if args.runs < 1:
+        parser.error("--runs must be at least 1")
+    if args.warmup < 0:
+        parser.error("--warmup cannot be negative")
 
     bin_path = Path(args.bin)
     if not bin_path.exists():
-        subprocess.run(["cargo", "build", "--release"], check=True, cwd=ROOT)
+        subprocess.run(["cargo", "build", "--locked", "--release"], check=True, cwd=ROOT)
 
     fixtures: list[Path] = []
     roots = [Path(p) for p in args.fixtures if p] or [ROOT / "benches" / "fixtures"]

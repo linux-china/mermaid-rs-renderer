@@ -12,31 +12,11 @@
 <text x="400.0" y="25" text-anchor="middle" class="title">Render Time Comparison (log scale)</text>
 <line x1="120" y1="320.0" x2="650" y2="320.0" stroke="#ddd" stroke-dasharray="2,2"/>
 <text x="110" y="324.0" text-anchor="end" class="tick-label">1 ms</text>
-<line x1="120" y1="238.77038691385002" x2="650" y2="238.77038691385002" stroke="#ddd" stroke-dasharray="2,2"/>
-<text x="110" y="242.77038691385002" text-anchor="end" class="tick-label">10 ms</text>
-<line x1="120" y1="157.54077382770004" x2="650" y2="157.54077382770004" stroke="#ddd" stroke-dasharray="2,2"/>
-<text x="110" y="161.54077382770004" text-anchor="end" class="tick-label">100 ms</text>
-<line x1="120" y1="76.31116074155005" x2="650" y2="76.31116074155005" stroke="#ddd" stroke-dasharray="2,2"/>
-<text x="110" y="80.31116074155005" text-anchor="end" class="tick-label">1000 ms</text>
-<rect x="146.5" y="179.6955178997323" width="61.83333333333333" height="140.3044821002677" class="bar-mmdr" rx="2"/>
-<text x="177.41666666666666" y="194.6955178997323" text-anchor="middle" class="bar-label">53.4</text>
-<rect x="213.33333333333331" y="54.30382484094599" width="61.83333333333333" height="265.696175159054" class="bar-cli" rx="2"/>
-<text x="244.24999999999997" y="69.30382484094599" text-anchor="middle" class="bar-label">1866</text>
-<text x="208.33333333333331" y="340" text-anchor="middle" class="tick-label" transform="rotate(-30 208.33333333333331 340)">flow subgraph boundary intrusion</text>
-<rect x="323.16666666666663" y="225.5561997262224" width="61.83333333333333" height="94.44380027377761" class="bar-mmdr" rx="2"/>
-<text x="354.0833333333333" y="240.5561997262224" text-anchor="middle" class="bar-label">14.5</text>
-<rect x="389.99999999999994" y="55.76830599081592" width="61.83333333333333" height="264.2316940091841" class="bar-cli" rx="2"/>
-<text x="420.91666666666663" y="70.76830599081592" text-anchor="middle" class="bar-label">1790</text>
-<text x="384.99999999999994" y="340" text-anchor="middle" class="tick-label" transform="rotate(-30 384.99999999999994 340)">flow parallel edges bundle</text>
-<rect x="499.8333333333333" y="215.51650618899885" width="61.83333333333333" height="104.48349381100117" class="bar-mmdr" rx="2"/>
-<text x="530.75" y="230.51650618899885" text-anchor="middle" class="bar-label">19.3</text>
-<rect x="566.6666666666666" y="56.5594129995967" width="61.83333333333333" height="263.4405870004033" class="bar-cli" rx="2"/>
-<text x="597.5833333333333" y="71.5594129995967" text-anchor="middle" class="bar-label">1750</text>
-<text x="561.6666666666666" y="340" text-anchor="middle" class="tick-label" transform="rotate(-30 561.6666666666666 340)">flow flow direction backtrack</text>
+<rect x="199.5" y="91.7091806886732" width="185.5" height="228.2908193113268" class="bar-mmdr" rx="2"/>
+<text x="292.25" y="106.7091806886732" text-anchor="middle" class="bar-label">6.0</text>
+<text x="385.0" y="340" text-anchor="middle" class="tick-label" transform="rotate(-30 385.0 340)">flow tiny</text>
 <rect x="670" y="60" width="15" height="15" class="bar-mmdr"/>
 <text x="690" y="72" class="legend">mmdr</text>
-<rect x="670" y="85" width="15" height="15" class="bar-cli"/>
-<text x="690" y="97" class="legend">mermaid-cli</text>
 <line x1="120" y1="40" x2="120" y2="320" stroke="#333" stroke-width="2"/>
 <line x1="120" y1="320" x2="650" y2="320" stroke="#333" stroke-width="2"/>
 </svg>

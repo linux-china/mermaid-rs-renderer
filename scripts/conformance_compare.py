@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 import argparse
 import os
 import subprocess
@@ -10,8 +12,9 @@ from typing import Iterable
 try:
     from PIL import Image, ImageChops, ImageStat
 except ImportError:  # pragma: no cover
-    print("Pillow is required: pip install pillow", file=sys.stderr)
-    sys.exit(2)
+    Image = None
+    ImageChops = None
+    ImageStat = None
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_FIXTURES = ROOT / "tests" / "fixtures"
@@ -57,9 +60,9 @@ def render_rust(
     if not bin_path.exists():
         print("Building release binary...", file=sys.stderr)
         if bin_path.name == "mmdr":
-            res = run(["cargo", "build", "--release", "--bin", "mmdr"])
+            res = run(["cargo", "build", "--locked", "--release", "--bin", "mmdr"])
         else:
-            res = run(["cargo", "build", "--release"])
+            res = run(["cargo", "build", "--locked", "--release"])
         if res.returncode != 0:
             print(res.stderr, file=sys.stderr)
             raise RuntimeError("cargo build failed")
@@ -277,6 +280,10 @@ def main():
         help="Generate layout diff report using SVG + layout JSON",
     )
     args = parser.parse_args()
+
+    if Image is None:
+        print("Pillow is required: python3 -m pip install pillow", file=sys.stderr)
+        return 2
 
     input_path = Path(args.input)
     if input_path.is_dir():

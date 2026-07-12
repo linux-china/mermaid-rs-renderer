@@ -24,7 +24,7 @@ def resolve_bin(path_str: str) -> Path:
 def ensure_bin(bin_path: Path):
     if bin_path.exists():
         return
-    res = run(["cargo", "build", "--release"])
+    res = run(["cargo", "build", "--locked", "--release"])
     if res.returncode != 0:
         raise RuntimeError(res.stderr.strip() or "cargo build failed")
 

@@ -606,8 +606,7 @@ fn radar_curve_with_fewer_values_than_axes_pads_missing_axes_at_center() {
         );
     }
     // Missing axes (D, E) sit exactly at the center radius.
-    for idx in 3..5 {
-        let (x, y) = short[idx];
+    for (idx, (x, y)) in short.iter().copied().enumerate().take(5).skip(3) {
         assert!(
             x.abs() < 0.001 && y.abs() < 0.001,
             "missing axis {idx} should default to value 0 at the center, got ({x},{y})"

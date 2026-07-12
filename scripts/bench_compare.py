@@ -7,6 +7,7 @@ Features:
 - Memory usage tracking
 - Visual SVG chart generation
 """
+import argparse
 import json
 import os
 import re
@@ -147,11 +148,14 @@ BENCHMARK_ENV = benchmark_env()
 
 
 def mmdc_cli_identity(cli_cmd: str) -> str:
-    result = subprocess.run(
-        shlex.split(cli_cmd) + ["--version"],
-        capture_output=True,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            shlex.split(cli_cmd) + ["--version"],
+            capture_output=True,
+            text=True,
+        )
+    except OSError as err:
+        return f"unavailable: {err}"
     output = (result.stdout or "").strip() or (result.stderr or "").strip()
     if not output:
         output = f"rc={result.returncode}"
@@ -711,7 +715,20 @@ def generate_breakdown_chart(results: dict, output_path: Path):
     print(f"Wrote breakdown chart: {output_path}")
 
 
+def parse_args() -> None:
+    parser = argparse.ArgumentParser(
+        description="Benchmark mmdr against mermaid-cli",
+        epilog=(
+            "Configuration is supplied through environment variables. Common settings: "
+            "MMDR_BIN, MMD_CLI, RUNS, WARMUP, CASES, SKIP_MERMAID_CLI, "
+            "SKIP_CHARTS, OUT_JSON, and NO_HISTORY_LOG. See docs/benchmarks.md."
+        ),
+    )
+    parser.parse_args()
+
+
 def main():
+    parse_args()
     results = {"mmdr": {}, "mermaid_cli": {}}
     mmdc_cache_state = init_mmdc_cache_state()
     runtime = {}

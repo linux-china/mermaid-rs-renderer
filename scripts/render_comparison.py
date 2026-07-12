@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import os
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -37,7 +38,7 @@ def mmdr_needs_rebuild(bin_path: Path) -> bool:
 def ensure_mmdr(bin_path: Path) -> None:
     if not mmdr_needs_rebuild(bin_path):
         return
-    res = run(["cargo", "build", "--release"])
+    res = run(["cargo", "build", "--locked", "--release"])
     if res.returncode != 0:
         raise RuntimeError(res.stderr.strip() or "cargo build failed")
 
@@ -202,8 +203,8 @@ def main() -> int:
     )
     parser.add_argument(
         "--puppeteer",
-        default=str(Path("/home/jeremy/jcode/tmp-puppeteer.json")),
-        help="Path to puppeteer config for mermaid-cli.",
+        default=os.environ.get("MMD_PUPPETEER_CONFIG", ""),
+        help="Optional Puppeteer config for mermaid-cli (or set MMD_PUPPETEER_CONFIG).",
     )
     parser.add_argument(
         "--skip-official",

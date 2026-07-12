@@ -1,8 +1,21 @@
 use std::io::Write;
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 fn mmdr() -> Command {
     Command::new(env!("CARGO_BIN_EXE_mmdr"))
+}
+
+fn temp_case_dir(name: &str) -> PathBuf {
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system time should be after UNIX_EPOCH")
+        .as_nanos();
+    std::env::temp_dir().join(format!(
+        "mermaid-rs-renderer-{name}-{}-{nonce}",
+        std::process::id()
+    ))
 }
 
 fn assert_svg_size(svg: &str, width: &str, height: &str) {
@@ -408,4 +421,68 @@ fn cli_theme_flag_composes_with_theme_variables() {
         svg.contains("fill=\"#333333\""),
         "non-overridden dark preset values (background) should remain"
     );
+}
+
+#[test]
+fn cli_markdown_trailing_output_dirs_are_created() {
+    let dir = temp_case_dir("markdown-output-dir");
+    std::fs::create_dir_all(&dir).expect("create temp dir");
+    let input = dir.join("input.md");
+    let out_dir = dir.join("diagrams");
+    let dump_dir = dir.join("layouts");
+    std::fs::write(
+        &input,
+        r#"
+# Diagrams
+
+```mermaid
+flowchart LR
+  A --> B
+```
+
+```mermaid
+sequenceDiagram
+  Alice->>Bob: hi
+```
+"#,
+    )
+    .expect("write markdown input");
+
+    let out_arg = format!("{}{}", out_dir.display(), std::path::MAIN_SEPARATOR);
+    let dump_arg = format!("{}{}", dump_dir.display(), std::path::MAIN_SEPARATOR);
+    let output = mmdr()
+        .args([
+            "--input",
+            input.to_str().expect("utf-8 input path"),
+            "--output",
+            &out_arg,
+            "--dumpLayout",
+            &dump_arg,
+            "-e",
+            "svg",
+        ])
+        .output()
+        .expect("failed to run mmdr");
+
+    assert!(
+        output.status.success(),
+        "mmdr failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    for idx in 1..=2 {
+        let svg = out_dir.join(format!("diagram-{idx}.svg"));
+        let layout = dump_dir.join(format!("diagram-{idx}.layout.json"));
+        assert!(svg.exists(), "expected SVG output at {}", svg.display());
+        assert!(
+            layout.exists(),
+            "expected layout dump at {}",
+            layout.display()
+        );
+    }
+    assert!(
+        !dir.join("diagrams-1.svg").exists(),
+        "trailing directory output must not be treated as a filename prefix"
+    );
+
+    let _ = std::fs::remove_dir_all(dir);
 }

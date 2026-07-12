@@ -1,224 +1,224 @@
 {
-  "config": "/home/jeremy/mermaid-rs-renderer/tests/fixtures/modern-config.json",
+  "config": "tests/fixtures/modern-config.json",
   "fixtures": [
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/architecture/basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/architecture/bends.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/architecture/junctions.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/architecture/ports.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/block/basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/block/nested_groups.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/c4/basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/class/basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/class/multiplicity.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/er/basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/flowchart/basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/flowchart/bidirectional_labels.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/flowchart/complex.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/flowchart/cycles.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/flowchart/decision_shapes.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/flowchart/dense.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/flowchart/edges.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/flowchart/ports.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/flowchart/ports_arrow_pathing_regression.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/flowchart/styles.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/flowchart/subgraph.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/flowchart/subgraph_direction.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/flowchart/subgraph_empty.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/gantt/basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/gitgraph/basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/journey/basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/kanban/basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/mindmap/basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/mindmap/lr_tree.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/mindmap/tidy_tree.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/packet/basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/pie/basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/quadrant/basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/radar/basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/requirement/basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/sankey/basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/sequence/basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/sequence/frames.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/sequence/nested_alt.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/sequence/par_alt.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/state/basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/state/note.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/timeline/basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/treemap/basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/xychart/basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/zenuml/basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/architecture_medium.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/block_medium.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/c4_medium.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/class.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/class_medium.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/class_tiny.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/er_medium.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/architecture_sys.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/block_architecture.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/class_inheritance_mix.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/class_relations_dense.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/er_inventory_large.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/flowchart_bipartite_dense.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/flowchart_starburst.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/flowchart_subgraph_cross.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/gantt_release_plan.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/gitgraph_hotfix.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/journey_onboarding.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/kanban_wip.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/mindmap_program.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/packet_network.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/pie_many_slices.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/quadrant_strategy.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/radar_tech.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/requirement_traceability.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/sankey_energy.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/sequence_frames_notes.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/sequence_long_labels.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/state_nested_choice.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/timeline_phases.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/treemap_portfolio.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_asymmetric_components.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_backedges_subgraphs.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_component_packing.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_direction_conflict.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_fanout_returns.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_flow_direction_backtrack.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_grid_feedback.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_label_collision.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_lanes_crossfeed.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_large.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_long_edge_labels.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_medium.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_mega_braid_feedback.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_mega_crosslane_subgraphs.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_mega_event_mesh.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_mega_multihub_control.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_mega_nested_regions.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_nested_clusters.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_parallel_edges_bundle.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_parallel_label_stack.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_parallel_merges.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_path_occlusion_maze.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_port_alignment_matrix.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_ports_heavy.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_selfloop_bidi.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_small.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_sparse_components.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_subgraph_boundary_intrusion.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_tiny.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_weave.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/gantt_medium.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/gitgraph_medium.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/journey_medium.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/kanban_medium.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/mindmap_medium.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/packet_medium.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/pie_medium.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/quadrant_medium.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/radar_medium.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/requirement_medium.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/sankey_medium.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/sequence.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/sequence_medium.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/sequence_tiny.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/state.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/state_medium.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/state_tiny.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/timeline_medium.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/treemap_medium.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/xychart_medium.mmd",
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/zenuml_medium.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/architecture_basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/block_basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/c4_basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/c4_container.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/class_basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/class_full.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/class_interface.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/class_multiplicity.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/class_patterns.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/class_relations.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/er_basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/er_blog.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/er_ecommerce.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/er_extended.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_auth.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_back_edges.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_bt.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_cicd.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_complex.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_cross_subgraph_labels.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_cycle_entry_exit.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_cycles.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_dense.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_disconnected.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_edges.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_hub_spoke.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_labels.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_nested_subgraphs.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_opaque.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_ports.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_rl.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_shapes.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_styles.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_subgraph.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_subgraph_dir.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_td.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/gantt_basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/gantt_full.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/gantt_release.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/gantt_sections.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/gitgraph_basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/gitgraph_branching.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/gitgraph_parallel.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/gitgraph_release.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/journey_basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/journey_shopping.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/journey_team.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/kanban_basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/mindmap_basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/mindmap_deep.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/mindmap_project.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/mindmap_shapes.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/packet_basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/pie_basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/pie_multicolor.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/pie_segments.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/quadrant_basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/quadrant_strategy.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/quadrant_tech.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/radar_basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/requirement_basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/sankey_basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/sequence_autonumber.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/sequence_basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/sequence_collab.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/sequence_frames.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/sequence_loops.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/sequence_microservice.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/sequence_notes.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/sequence_oauth.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/state_basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/state_choice.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/state_fork.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/state_nested.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/state_note.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/state_parallel.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/state_tcp.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/timeline_basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/timeline_detailed.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/timeline_release.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/treemap_basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/xychart_basic.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/xychart_line.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/xychart_mixed.mmd",
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/xychart_series.mmd"
+    "tests/fixtures/architecture/basic.mmd",
+    "tests/fixtures/architecture/bends.mmd",
+    "tests/fixtures/architecture/junctions.mmd",
+    "tests/fixtures/architecture/ports.mmd",
+    "tests/fixtures/block/basic.mmd",
+    "tests/fixtures/block/nested_groups.mmd",
+    "tests/fixtures/c4/basic.mmd",
+    "tests/fixtures/class/basic.mmd",
+    "tests/fixtures/class/multiplicity.mmd",
+    "tests/fixtures/er/basic.mmd",
+    "tests/fixtures/flowchart/basic.mmd",
+    "tests/fixtures/flowchart/bidirectional_labels.mmd",
+    "tests/fixtures/flowchart/complex.mmd",
+    "tests/fixtures/flowchart/cycles.mmd",
+    "tests/fixtures/flowchart/decision_shapes.mmd",
+    "tests/fixtures/flowchart/dense.mmd",
+    "tests/fixtures/flowchart/edges.mmd",
+    "tests/fixtures/flowchart/ports.mmd",
+    "tests/fixtures/flowchart/ports_arrow_pathing_regression.mmd",
+    "tests/fixtures/flowchart/styles.mmd",
+    "tests/fixtures/flowchart/subgraph.mmd",
+    "tests/fixtures/flowchart/subgraph_direction.mmd",
+    "tests/fixtures/flowchart/subgraph_empty.mmd",
+    "tests/fixtures/gantt/basic.mmd",
+    "tests/fixtures/gitgraph/basic.mmd",
+    "tests/fixtures/journey/basic.mmd",
+    "tests/fixtures/kanban/basic.mmd",
+    "tests/fixtures/mindmap/basic.mmd",
+    "tests/fixtures/mindmap/lr_tree.mmd",
+    "tests/fixtures/mindmap/tidy_tree.mmd",
+    "tests/fixtures/packet/basic.mmd",
+    "tests/fixtures/pie/basic.mmd",
+    "tests/fixtures/quadrant/basic.mmd",
+    "tests/fixtures/radar/basic.mmd",
+    "tests/fixtures/requirement/basic.mmd",
+    "tests/fixtures/sankey/basic.mmd",
+    "tests/fixtures/sequence/basic.mmd",
+    "tests/fixtures/sequence/frames.mmd",
+    "tests/fixtures/sequence/nested_alt.mmd",
+    "tests/fixtures/sequence/par_alt.mmd",
+    "tests/fixtures/state/basic.mmd",
+    "tests/fixtures/state/note.mmd",
+    "tests/fixtures/timeline/basic.mmd",
+    "tests/fixtures/treemap/basic.mmd",
+    "tests/fixtures/xychart/basic.mmd",
+    "tests/fixtures/zenuml/basic.mmd",
+    "benches/fixtures/architecture_medium.mmd",
+    "benches/fixtures/block_medium.mmd",
+    "benches/fixtures/c4_medium.mmd",
+    "benches/fixtures/class.mmd",
+    "benches/fixtures/class_medium.mmd",
+    "benches/fixtures/class_tiny.mmd",
+    "benches/fixtures/er_medium.mmd",
+    "benches/fixtures/expanded/architecture_sys.mmd",
+    "benches/fixtures/expanded/block_architecture.mmd",
+    "benches/fixtures/expanded/class_inheritance_mix.mmd",
+    "benches/fixtures/expanded/class_relations_dense.mmd",
+    "benches/fixtures/expanded/er_inventory_large.mmd",
+    "benches/fixtures/expanded/flowchart_bipartite_dense.mmd",
+    "benches/fixtures/expanded/flowchart_starburst.mmd",
+    "benches/fixtures/expanded/flowchart_subgraph_cross.mmd",
+    "benches/fixtures/expanded/gantt_release_plan.mmd",
+    "benches/fixtures/expanded/gitgraph_hotfix.mmd",
+    "benches/fixtures/expanded/journey_onboarding.mmd",
+    "benches/fixtures/expanded/kanban_wip.mmd",
+    "benches/fixtures/expanded/mindmap_program.mmd",
+    "benches/fixtures/expanded/packet_network.mmd",
+    "benches/fixtures/expanded/pie_many_slices.mmd",
+    "benches/fixtures/expanded/quadrant_strategy.mmd",
+    "benches/fixtures/expanded/radar_tech.mmd",
+    "benches/fixtures/expanded/requirement_traceability.mmd",
+    "benches/fixtures/expanded/sankey_energy.mmd",
+    "benches/fixtures/expanded/sequence_frames_notes.mmd",
+    "benches/fixtures/expanded/sequence_long_labels.mmd",
+    "benches/fixtures/expanded/state_nested_choice.mmd",
+    "benches/fixtures/expanded/timeline_phases.mmd",
+    "benches/fixtures/expanded/treemap_portfolio.mmd",
+    "benches/fixtures/flowchart.mmd",
+    "benches/fixtures/flowchart_asymmetric_components.mmd",
+    "benches/fixtures/flowchart_backedges_subgraphs.mmd",
+    "benches/fixtures/flowchart_component_packing.mmd",
+    "benches/fixtures/flowchart_direction_conflict.mmd",
+    "benches/fixtures/flowchart_fanout_returns.mmd",
+    "benches/fixtures/flowchart_flow_direction_backtrack.mmd",
+    "benches/fixtures/flowchart_grid_feedback.mmd",
+    "benches/fixtures/flowchart_label_collision.mmd",
+    "benches/fixtures/flowchart_lanes_crossfeed.mmd",
+    "benches/fixtures/flowchart_large.mmd",
+    "benches/fixtures/flowchart_long_edge_labels.mmd",
+    "benches/fixtures/flowchart_medium.mmd",
+    "benches/fixtures/flowchart_mega_braid_feedback.mmd",
+    "benches/fixtures/flowchart_mega_crosslane_subgraphs.mmd",
+    "benches/fixtures/flowchart_mega_event_mesh.mmd",
+    "benches/fixtures/flowchart_mega_multihub_control.mmd",
+    "benches/fixtures/flowchart_mega_nested_regions.mmd",
+    "benches/fixtures/flowchart_nested_clusters.mmd",
+    "benches/fixtures/flowchart_parallel_edges_bundle.mmd",
+    "benches/fixtures/flowchart_parallel_label_stack.mmd",
+    "benches/fixtures/flowchart_parallel_merges.mmd",
+    "benches/fixtures/flowchart_path_occlusion_maze.mmd",
+    "benches/fixtures/flowchart_port_alignment_matrix.mmd",
+    "benches/fixtures/flowchart_ports_heavy.mmd",
+    "benches/fixtures/flowchart_selfloop_bidi.mmd",
+    "benches/fixtures/flowchart_small.mmd",
+    "benches/fixtures/flowchart_sparse_components.mmd",
+    "benches/fixtures/flowchart_subgraph_boundary_intrusion.mmd",
+    "benches/fixtures/flowchart_tiny.mmd",
+    "benches/fixtures/flowchart_weave.mmd",
+    "benches/fixtures/gantt_medium.mmd",
+    "benches/fixtures/gitgraph_medium.mmd",
+    "benches/fixtures/journey_medium.mmd",
+    "benches/fixtures/kanban_medium.mmd",
+    "benches/fixtures/mindmap_medium.mmd",
+    "benches/fixtures/packet_medium.mmd",
+    "benches/fixtures/pie_medium.mmd",
+    "benches/fixtures/quadrant_medium.mmd",
+    "benches/fixtures/radar_medium.mmd",
+    "benches/fixtures/requirement_medium.mmd",
+    "benches/fixtures/sankey_medium.mmd",
+    "benches/fixtures/sequence.mmd",
+    "benches/fixtures/sequence_medium.mmd",
+    "benches/fixtures/sequence_tiny.mmd",
+    "benches/fixtures/state.mmd",
+    "benches/fixtures/state_medium.mmd",
+    "benches/fixtures/state_tiny.mmd",
+    "benches/fixtures/timeline_medium.mmd",
+    "benches/fixtures/treemap_medium.mmd",
+    "benches/fixtures/xychart_medium.mmd",
+    "benches/fixtures/zenuml_medium.mmd",
+    "docs/comparison_sources/architecture_basic.mmd",
+    "docs/comparison_sources/block_basic.mmd",
+    "docs/comparison_sources/c4_basic.mmd",
+    "docs/comparison_sources/c4_container.mmd",
+    "docs/comparison_sources/class_basic.mmd",
+    "docs/comparison_sources/class_full.mmd",
+    "docs/comparison_sources/class_interface.mmd",
+    "docs/comparison_sources/class_multiplicity.mmd",
+    "docs/comparison_sources/class_patterns.mmd",
+    "docs/comparison_sources/class_relations.mmd",
+    "docs/comparison_sources/er_basic.mmd",
+    "docs/comparison_sources/er_blog.mmd",
+    "docs/comparison_sources/er_ecommerce.mmd",
+    "docs/comparison_sources/er_extended.mmd",
+    "docs/comparison_sources/flowchart_auth.mmd",
+    "docs/comparison_sources/flowchart_back_edges.mmd",
+    "docs/comparison_sources/flowchart_basic.mmd",
+    "docs/comparison_sources/flowchart_bt.mmd",
+    "docs/comparison_sources/flowchart_cicd.mmd",
+    "docs/comparison_sources/flowchart_complex.mmd",
+    "docs/comparison_sources/flowchart_cross_subgraph_labels.mmd",
+    "docs/comparison_sources/flowchart_cycle_entry_exit.mmd",
+    "docs/comparison_sources/flowchart_cycles.mmd",
+    "docs/comparison_sources/flowchart_dense.mmd",
+    "docs/comparison_sources/flowchart_disconnected.mmd",
+    "docs/comparison_sources/flowchart_edges.mmd",
+    "docs/comparison_sources/flowchart_hub_spoke.mmd",
+    "docs/comparison_sources/flowchart_labels.mmd",
+    "docs/comparison_sources/flowchart_nested_subgraphs.mmd",
+    "docs/comparison_sources/flowchart_opaque.mmd",
+    "docs/comparison_sources/flowchart_ports.mmd",
+    "docs/comparison_sources/flowchart_rl.mmd",
+    "docs/comparison_sources/flowchart_shapes.mmd",
+    "docs/comparison_sources/flowchart_styles.mmd",
+    "docs/comparison_sources/flowchart_subgraph.mmd",
+    "docs/comparison_sources/flowchart_subgraph_dir.mmd",
+    "docs/comparison_sources/flowchart_td.mmd",
+    "docs/comparison_sources/gantt_basic.mmd",
+    "docs/comparison_sources/gantt_full.mmd",
+    "docs/comparison_sources/gantt_release.mmd",
+    "docs/comparison_sources/gantt_sections.mmd",
+    "docs/comparison_sources/gitgraph_basic.mmd",
+    "docs/comparison_sources/gitgraph_branching.mmd",
+    "docs/comparison_sources/gitgraph_parallel.mmd",
+    "docs/comparison_sources/gitgraph_release.mmd",
+    "docs/comparison_sources/journey_basic.mmd",
+    "docs/comparison_sources/journey_shopping.mmd",
+    "docs/comparison_sources/journey_team.mmd",
+    "docs/comparison_sources/kanban_basic.mmd",
+    "docs/comparison_sources/mindmap_basic.mmd",
+    "docs/comparison_sources/mindmap_deep.mmd",
+    "docs/comparison_sources/mindmap_project.mmd",
+    "docs/comparison_sources/mindmap_shapes.mmd",
+    "docs/comparison_sources/packet_basic.mmd",
+    "docs/comparison_sources/pie_basic.mmd",
+    "docs/comparison_sources/pie_multicolor.mmd",
+    "docs/comparison_sources/pie_segments.mmd",
+    "docs/comparison_sources/quadrant_basic.mmd",
+    "docs/comparison_sources/quadrant_strategy.mmd",
+    "docs/comparison_sources/quadrant_tech.mmd",
+    "docs/comparison_sources/radar_basic.mmd",
+    "docs/comparison_sources/requirement_basic.mmd",
+    "docs/comparison_sources/sankey_basic.mmd",
+    "docs/comparison_sources/sequence_autonumber.mmd",
+    "docs/comparison_sources/sequence_basic.mmd",
+    "docs/comparison_sources/sequence_collab.mmd",
+    "docs/comparison_sources/sequence_frames.mmd",
+    "docs/comparison_sources/sequence_loops.mmd",
+    "docs/comparison_sources/sequence_microservice.mmd",
+    "docs/comparison_sources/sequence_notes.mmd",
+    "docs/comparison_sources/sequence_oauth.mmd",
+    "docs/comparison_sources/state_basic.mmd",
+    "docs/comparison_sources/state_choice.mmd",
+    "docs/comparison_sources/state_fork.mmd",
+    "docs/comparison_sources/state_nested.mmd",
+    "docs/comparison_sources/state_note.mmd",
+    "docs/comparison_sources/state_parallel.mmd",
+    "docs/comparison_sources/state_tcp.mmd",
+    "docs/comparison_sources/timeline_basic.mmd",
+    "docs/comparison_sources/timeline_detailed.mmd",
+    "docs/comparison_sources/timeline_release.mmd",
+    "docs/comparison_sources/treemap_basic.mmd",
+    "docs/comparison_sources/xychart_basic.mmd",
+    "docs/comparison_sources/xychart_line.mmd",
+    "docs/comparison_sources/xychart_mixed.mmd",
+    "docs/comparison_sources/xychart_series.mmd"
   ],
   "metrics": {
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/architecture/basic.mmd": {
+    "tests/fixtures/architecture/basic.mmd": {
       "node_count": 2,
       "edge_count": 1,
       "edge_crossings": 0,
@@ -344,7 +344,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/architecture/bends.mmd": {
+    "tests/fixtures/architecture/bends.mmd": {
       "node_count": 3,
       "edge_count": 3,
       "edge_crossings": 1,
@@ -470,7 +470,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/architecture/junctions.mmd": {
+    "tests/fixtures/architecture/junctions.mmd": {
       "node_count": 7,
       "edge_count": 6,
       "edge_crossings": 0,
@@ -596,7 +596,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/architecture/ports.mmd": {
+    "tests/fixtures/architecture/ports.mmd": {
       "node_count": 4,
       "edge_count": 3,
       "edge_crossings": 0,
@@ -722,7 +722,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/block/basic.mmd": {
+    "tests/fixtures/block/basic.mmd": {
       "node_count": 4,
       "edge_count": 4,
       "edge_crossings": 0,
@@ -848,7 +848,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/block/nested_groups.mmd": {
+    "tests/fixtures/block/nested_groups.mmd": {
       "node_count": 6,
       "edge_count": 2,
       "edge_crossings": 0,
@@ -974,7 +974,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/c4/basic.mmd": {
+    "tests/fixtures/c4/basic.mmd": {
       "node_count": 3,
       "edge_count": 1,
       "edge_crossings": 0,
@@ -1117,7 +1117,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/class/basic.mmd": {
+    "tests/fixtures/class/basic.mmd": {
       "node_count": 2,
       "edge_count": 1,
       "edge_crossings": 0,
@@ -1282,7 +1282,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/class/multiplicity.mmd": {
+    "tests/fixtures/class/multiplicity.mmd": {
       "node_count": 2,
       "edge_count": 1,
       "edge_crossings": 0,
@@ -1447,7 +1447,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/er/basic.mmd": {
+    "tests/fixtures/er/basic.mmd": {
       "node_count": 2,
       "edge_count": 1,
       "edge_crossings": 0,
@@ -1612,7 +1612,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/flowchart/basic.mmd": {
+    "tests/fixtures/flowchart/basic.mmd": {
       "node_count": 5,
       "edge_count": 5,
       "edge_crossings": 0,
@@ -1777,7 +1777,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/flowchart/bidirectional_labels.mmd": {
+    "tests/fixtures/flowchart/bidirectional_labels.mmd": {
       "node_count": 5,
       "edge_count": 8,
       "edge_crossings": 0,
@@ -1942,7 +1942,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/flowchart/complex.mmd": {
+    "tests/fixtures/flowchart/complex.mmd": {
       "node_count": 13,
       "edge_count": 19,
       "edge_crossings": 3,
@@ -2107,7 +2107,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/flowchart/cycles.mmd": {
+    "tests/fixtures/flowchart/cycles.mmd": {
       "node_count": 8,
       "edge_count": 9,
       "edge_crossings": 0,
@@ -2272,7 +2272,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/flowchart/decision_shapes.mmd": {
+    "tests/fixtures/flowchart/decision_shapes.mmd": {
       "node_count": 5,
       "edge_count": 5,
       "edge_crossings": 0,
@@ -2437,7 +2437,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/flowchart/dense.mmd": {
+    "tests/fixtures/flowchart/dense.mmd": {
       "node_count": 12,
       "edge_count": 22,
       "edge_crossings": 13,
@@ -2580,7 +2580,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/flowchart/edges.mmd": {
+    "tests/fixtures/flowchart/edges.mmd": {
       "node_count": 10,
       "edge_count": 5,
       "edge_crossings": 0,
@@ -2706,7 +2706,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/flowchart/ports.mmd": {
+    "tests/fixtures/flowchart/ports.mmd": {
       "node_count": 12,
       "edge_count": 20,
       "edge_crossings": 31,
@@ -2832,7 +2832,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/flowchart/ports_arrow_pathing_regression.mmd": {
+    "tests/fixtures/flowchart/ports_arrow_pathing_regression.mmd": {
       "node_count": 8,
       "edge_count": 10,
       "edge_crossings": 9,
@@ -2997,7 +2997,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/flowchart/styles.mmd": {
+    "tests/fixtures/flowchart/styles.mmd": {
       "node_count": 4,
       "edge_count": 2,
       "edge_crossings": 0,
@@ -3123,7 +3123,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/flowchart/subgraph.mmd": {
+    "tests/fixtures/flowchart/subgraph.mmd": {
       "node_count": 4,
       "edge_count": 3,
       "edge_crossings": 0,
@@ -3249,7 +3249,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/flowchart/subgraph_direction.mmd": {
+    "tests/fixtures/flowchart/subgraph_direction.mmd": {
       "node_count": 5,
       "edge_count": 4,
       "edge_crossings": 0,
@@ -3392,7 +3392,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/flowchart/subgraph_empty.mmd": {
+    "tests/fixtures/flowchart/subgraph_empty.mmd": {
       "node_count": 6,
       "edge_count": 4,
       "edge_crossings": 0,
@@ -3535,7 +3535,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/gantt/basic.mmd": {
+    "tests/fixtures/gantt/basic.mmd": {
       "node_count": 0,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -3661,7 +3661,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/gitgraph/basic.mmd": {
+    "tests/fixtures/gitgraph/basic.mmd": {
       "node_count": 1,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -3787,7 +3787,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/journey/basic.mmd": {
+    "tests/fixtures/journey/basic.mmd": {
       "node_count": 1,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -3913,7 +3913,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/kanban/basic.mmd": {
+    "tests/fixtures/kanban/basic.mmd": {
       "node_count": 2,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -4039,7 +4039,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/mindmap/basic.mmd": {
+    "tests/fixtures/mindmap/basic.mmd": {
       "node_count": 4,
       "edge_count": 3,
       "edge_crossings": 0,
@@ -4165,7 +4165,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/mindmap/lr_tree.mmd": {
+    "tests/fixtures/mindmap/lr_tree.mmd": {
       "node_count": 12,
       "edge_count": 11,
       "edge_crossings": 0,
@@ -4291,7 +4291,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/mindmap/tidy_tree.mmd": {
+    "tests/fixtures/mindmap/tidy_tree.mmd": {
       "node_count": 15,
       "edge_count": 14,
       "edge_crossings": 2,
@@ -4417,7 +4417,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/packet/basic.mmd": {
+    "tests/fixtures/packet/basic.mmd": {
       "node_count": 2,
       "edge_count": 1,
       "edge_crossings": 0,
@@ -4543,7 +4543,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/pie/basic.mmd": {
+    "tests/fixtures/pie/basic.mmd": {
       "node_count": 0,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -4669,7 +4669,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/quadrant/basic.mmd": {
+    "tests/fixtures/quadrant/basic.mmd": {
       "node_count": 0,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -4795,7 +4795,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/radar/basic.mmd": {
+    "tests/fixtures/radar/basic.mmd": {
       "node_count": 1,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -4921,7 +4921,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/requirement/basic.mmd": {
+    "tests/fixtures/requirement/basic.mmd": {
       "node_count": 2,
       "edge_count": 1,
       "edge_crossings": 0,
@@ -5086,7 +5086,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/sankey/basic.mmd": {
+    "tests/fixtures/sankey/basic.mmd": {
       "node_count": 3,
       "edge_count": 3,
       "edge_crossings": 0,
@@ -5229,7 +5229,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/sequence/basic.mmd": {
+    "tests/fixtures/sequence/basic.mmd": {
       "node_count": 2,
       "edge_count": 2,
       "edge_crossings": 0,
@@ -5394,7 +5394,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/sequence/frames.mmd": {
+    "tests/fixtures/sequence/frames.mmd": {
       "node_count": 3,
       "edge_count": 5,
       "edge_crossings": 0,
@@ -5559,7 +5559,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/sequence/nested_alt.mmd": {
+    "tests/fixtures/sequence/nested_alt.mmd": {
       "node_count": 8,
       "edge_count": 11,
       "edge_crossings": 0,
@@ -5724,7 +5724,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/sequence/par_alt.mmd": {
+    "tests/fixtures/sequence/par_alt.mmd": {
       "node_count": 2,
       "edge_count": 6,
       "edge_crossings": 0,
@@ -5889,7 +5889,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/state/basic.mmd": {
+    "tests/fixtures/state/basic.mmd": {
       "node_count": 4,
       "edge_count": 3,
       "edge_crossings": 0,
@@ -6054,7 +6054,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/state/note.mmd": {
+    "tests/fixtures/state/note.mmd": {
       "node_count": 4,
       "edge_count": 3,
       "edge_crossings": 0,
@@ -6180,7 +6180,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/timeline/basic.mmd": {
+    "tests/fixtures/timeline/basic.mmd": {
       "node_count": 1,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -6306,7 +6306,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/treemap/basic.mmd": {
+    "tests/fixtures/treemap/basic.mmd": {
       "node_count": 2,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -6432,7 +6432,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/xychart/basic.mmd": {
+    "tests/fixtures/xychart/basic.mmd": {
       "node_count": 0,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -6558,7 +6558,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/tests/fixtures/zenuml/basic.mmd": {
+    "tests/fixtures/zenuml/basic.mmd": {
       "node_count": 2,
       "edge_count": 2,
       "edge_crossings": 0,
@@ -6723,7 +6723,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/architecture_medium.mmd": {
+    "benches/fixtures/architecture_medium.mmd": {
       "node_count": 2,
       "edge_count": 1,
       "edge_crossings": 0,
@@ -6849,7 +6849,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/block_medium.mmd": {
+    "benches/fixtures/block_medium.mmd": {
       "node_count": 3,
       "edge_count": 2,
       "edge_crossings": 0,
@@ -6975,7 +6975,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/c4_medium.mmd": {
+    "benches/fixtures/c4_medium.mmd": {
       "node_count": 6,
       "edge_count": 4,
       "edge_crossings": 0,
@@ -7118,7 +7118,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/class.mmd": {
+    "benches/fixtures/class.mmd": {
       "node_count": 4,
       "edge_count": 3,
       "edge_crossings": 0,
@@ -7283,7 +7283,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/class_medium.mmd": {
+    "benches/fixtures/class_medium.mmd": {
       "node_count": 15,
       "edge_count": 14,
       "edge_crossings": 0,
@@ -7448,7 +7448,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/class_tiny.mmd": {
+    "benches/fixtures/class_tiny.mmd": {
       "node_count": 1,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -7574,7 +7574,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/er_medium.mmd": {
+    "benches/fixtures/er_medium.mmd": {
       "node_count": 5,
       "edge_count": 4,
       "edge_crossings": 0,
@@ -7739,7 +7739,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/architecture_sys.mmd": {
+    "benches/fixtures/expanded/architecture_sys.mmd": {
       "node_count": 5,
       "edge_count": 4,
       "edge_crossings": 0,
@@ -7882,7 +7882,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/block_architecture.mmd": {
+    "benches/fixtures/expanded/block_architecture.mmd": {
       "node_count": 5,
       "edge_count": 5,
       "edge_crossings": 0,
@@ -8008,7 +8008,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/class_inheritance_mix.mmd": {
+    "benches/fixtures/expanded/class_inheritance_mix.mmd": {
       "node_count": 8,
       "edge_count": 9,
       "edge_crossings": 0,
@@ -8173,7 +8173,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/class_relations_dense.mmd": {
+    "benches/fixtures/expanded/class_relations_dense.mmd": {
       "node_count": 7,
       "edge_count": 8,
       "edge_crossings": 1,
@@ -8338,7 +8338,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/er_inventory_large.mmd": {
+    "benches/fixtures/expanded/er_inventory_large.mmd": {
       "node_count": 9,
       "edge_count": 8,
       "edge_crossings": 1,
@@ -8503,7 +8503,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/flowchart_bipartite_dense.mmd": {
+    "benches/fixtures/expanded/flowchart_bipartite_dense.mmd": {
       "node_count": 9,
       "edge_count": 14,
       "edge_crossings": 16,
@@ -8668,7 +8668,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/flowchart_starburst.mmd": {
+    "benches/fixtures/expanded/flowchart_starburst.mmd": {
       "node_count": 12,
       "edge_count": 26,
       "edge_crossings": 23,
@@ -8833,7 +8833,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/flowchart_subgraph_cross.mmd": {
+    "benches/fixtures/expanded/flowchart_subgraph_cross.mmd": {
       "node_count": 6,
       "edge_count": 9,
       "edge_crossings": 1,
@@ -8998,7 +8998,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/gantt_release_plan.mmd": {
+    "benches/fixtures/expanded/gantt_release_plan.mmd": {
       "node_count": 0,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -9124,7 +9124,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/gitgraph_hotfix.mmd": {
+    "benches/fixtures/expanded/gitgraph_hotfix.mmd": {
       "node_count": 1,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -9250,7 +9250,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/journey_onboarding.mmd": {
+    "benches/fixtures/expanded/journey_onboarding.mmd": {
       "node_count": 1,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -9376,7 +9376,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/kanban_wip.mmd": {
+    "benches/fixtures/expanded/kanban_wip.mmd": {
       "node_count": 7,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -9502,7 +9502,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/mindmap_program.mmd": {
+    "benches/fixtures/expanded/mindmap_program.mmd": {
       "node_count": 14,
       "edge_count": 13,
       "edge_crossings": 0,
@@ -9628,7 +9628,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/packet_network.mmd": {
+    "benches/fixtures/expanded/packet_network.mmd": {
       "node_count": 8,
       "edge_count": 7,
       "edge_crossings": 0,
@@ -9754,7 +9754,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/pie_many_slices.mmd": {
+    "benches/fixtures/expanded/pie_many_slices.mmd": {
       "node_count": 0,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -9880,7 +9880,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/quadrant_strategy.mmd": {
+    "benches/fixtures/expanded/quadrant_strategy.mmd": {
       "node_count": 0,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -10006,7 +10006,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/radar_tech.mmd": {
+    "benches/fixtures/expanded/radar_tech.mmd": {
       "node_count": 2,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -10132,7 +10132,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/requirement_traceability.mmd": {
+    "benches/fixtures/expanded/requirement_traceability.mmd": {
       "node_count": 5,
       "edge_count": 4,
       "edge_crossings": 0,
@@ -10297,7 +10297,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/sankey_energy.mmd": {
+    "benches/fixtures/expanded/sankey_energy.mmd": {
       "node_count": 7,
       "edge_count": 10,
       "edge_crossings": 0,
@@ -10440,7 +10440,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/sequence_frames_notes.mmd": {
+    "benches/fixtures/expanded/sequence_frames_notes.mmd": {
       "node_count": 6,
       "edge_count": 12,
       "edge_crossings": 0,
@@ -10605,7 +10605,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/sequence_long_labels.mmd": {
+    "benches/fixtures/expanded/sequence_long_labels.mmd": {
       "node_count": 4,
       "edge_count": 6,
       "edge_crossings": 0,
@@ -10770,7 +10770,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/state_nested_choice.mmd": {
+    "benches/fixtures/expanded/state_nested_choice.mmd": {
       "node_count": 11,
       "edge_count": 12,
       "edge_crossings": 2,
@@ -10935,7 +10935,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/timeline_phases.mmd": {
+    "benches/fixtures/expanded/timeline_phases.mmd": {
       "node_count": 1,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -11061,7 +11061,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/expanded/treemap_portfolio.mmd": {
+    "benches/fixtures/expanded/treemap_portfolio.mmd": {
       "node_count": 10,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -11187,7 +11187,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart.mmd": {
+    "benches/fixtures/flowchart.mmd": {
       "node_count": 9,
       "edge_count": 10,
       "edge_crossings": 0,
@@ -11352,7 +11352,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_asymmetric_components.mmd": {
+    "benches/fixtures/flowchart_asymmetric_components.mmd": {
       "node_count": 11,
       "edge_count": 11,
       "edge_crossings": 0,
@@ -11517,7 +11517,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_backedges_subgraphs.mmd": {
+    "benches/fixtures/flowchart_backedges_subgraphs.mmd": {
       "node_count": 12,
       "edge_count": 18,
       "edge_crossings": 3,
@@ -11682,7 +11682,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_component_packing.mmd": {
+    "benches/fixtures/flowchart_component_packing.mmd": {
       "node_count": 14,
       "edge_count": 14,
       "edge_crossings": 1,
@@ -11847,7 +11847,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_direction_conflict.mmd": {
+    "benches/fixtures/flowchart_direction_conflict.mmd": {
       "node_count": 10,
       "edge_count": 14,
       "edge_crossings": 10,
@@ -12012,7 +12012,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_fanout_returns.mmd": {
+    "benches/fixtures/flowchart_fanout_returns.mmd": {
       "node_count": 12,
       "edge_count": 26,
       "edge_crossings": 31,
@@ -12177,7 +12177,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_flow_direction_backtrack.mmd": {
+    "benches/fixtures/flowchart_flow_direction_backtrack.mmd": {
       "node_count": 11,
       "edge_count": 17,
       "edge_crossings": 5,
@@ -12342,7 +12342,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_grid_feedback.mmd": {
+    "benches/fixtures/flowchart_grid_feedback.mmd": {
       "node_count": 16,
       "edge_count": 30,
       "edge_crossings": 19,
@@ -12507,7 +12507,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_label_collision.mmd": {
+    "benches/fixtures/flowchart_label_collision.mmd": {
       "node_count": 7,
       "edge_count": 15,
       "edge_crossings": 1,
@@ -12672,7 +12672,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_lanes_crossfeed.mmd": {
+    "benches/fixtures/flowchart_lanes_crossfeed.mmd": {
       "node_count": 10,
       "edge_count": 15,
       "edge_crossings": 13,
@@ -12837,7 +12837,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_large.mmd": {
+    "benches/fixtures/flowchart_large.mmd": {
       "node_count": 200,
       "edge_count": 199,
       "edge_crossings": 0,
@@ -12963,7 +12963,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_long_edge_labels.mmd": {
+    "benches/fixtures/flowchart_long_edge_labels.mmd": {
       "node_count": 9,
       "edge_count": 13,
       "edge_crossings": 3,
@@ -13128,7 +13128,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_medium.mmd": {
+    "benches/fixtures/flowchart_medium.mmd": {
       "node_count": 45,
       "edge_count": 44,
       "edge_crossings": 0,
@@ -13254,7 +13254,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_mega_braid_feedback.mmd": {
+    "benches/fixtures/flowchart_mega_braid_feedback.mmd": {
       "node_count": 19,
       "edge_count": 33,
       "edge_crossings": 24,
@@ -13419,7 +13419,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_mega_crosslane_subgraphs.mmd": {
+    "benches/fixtures/flowchart_mega_crosslane_subgraphs.mmd": {
       "node_count": 22,
       "edge_count": 37,
       "edge_crossings": 24,
@@ -13584,7 +13584,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_mega_event_mesh.mmd": {
+    "benches/fixtures/flowchart_mega_event_mesh.mmd": {
       "node_count": 24,
       "edge_count": 39,
       "edge_crossings": 298,
@@ -13749,7 +13749,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_mega_multihub_control.mmd": {
+    "benches/fixtures/flowchart_mega_multihub_control.mmd": {
       "node_count": 23,
       "edge_count": 47,
       "edge_crossings": 69,
@@ -13914,7 +13914,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_mega_nested_regions.mmd": {
+    "benches/fixtures/flowchart_mega_nested_regions.mmd": {
       "node_count": 19,
       "edge_count": 34,
       "edge_crossings": 38,
@@ -14079,7 +14079,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_nested_clusters.mmd": {
+    "benches/fixtures/flowchart_nested_clusters.mmd": {
       "node_count": 12,
       "edge_count": 15,
       "edge_crossings": 3,
@@ -14244,7 +14244,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_parallel_edges_bundle.mmd": {
+    "benches/fixtures/flowchart_parallel_edges_bundle.mmd": {
       "node_count": 5,
       "edge_count": 17,
       "edge_crossings": 2,
@@ -14409,7 +14409,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_parallel_label_stack.mmd": {
+    "benches/fixtures/flowchart_parallel_label_stack.mmd": {
       "node_count": 6,
       "edge_count": 12,
       "edge_crossings": 7,
@@ -14574,7 +14574,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_parallel_merges.mmd": {
+    "benches/fixtures/flowchart_parallel_merges.mmd": {
       "node_count": 15,
       "edge_count": 22,
       "edge_crossings": 3,
@@ -14739,7 +14739,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_path_occlusion_maze.mmd": {
+    "benches/fixtures/flowchart_path_occlusion_maze.mmd": {
       "node_count": 19,
       "edge_count": 41,
       "edge_crossings": 66,
@@ -14904,7 +14904,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_port_alignment_matrix.mmd": {
+    "benches/fixtures/flowchart_port_alignment_matrix.mmd": {
       "node_count": 17,
       "edge_count": 34,
       "edge_crossings": 50,
@@ -15030,7 +15030,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_ports_heavy.mmd": {
+    "benches/fixtures/flowchart_ports_heavy.mmd": {
       "node_count": 18,
       "edge_count": 39,
       "edge_crossings": 151,
@@ -15195,7 +15195,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_selfloop_bidi.mmd": {
+    "benches/fixtures/flowchart_selfloop_bidi.mmd": {
       "node_count": 7,
       "edge_count": 18,
       "edge_crossings": 30,
@@ -15360,7 +15360,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_small.mmd": {
+    "benches/fixtures/flowchart_small.mmd": {
       "node_count": 10,
       "edge_count": 9,
       "edge_crossings": 0,
@@ -15486,7 +15486,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_sparse_components.mmd": {
+    "benches/fixtures/flowchart_sparse_components.mmd": {
       "node_count": 10,
       "edge_count": 10,
       "edge_crossings": 2,
@@ -15651,7 +15651,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_subgraph_boundary_intrusion.mmd": {
+    "benches/fixtures/flowchart_subgraph_boundary_intrusion.mmd": {
       "node_count": 9,
       "edge_count": 19,
       "edge_crossings": 24,
@@ -15816,7 +15816,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_tiny.mmd": {
+    "benches/fixtures/flowchart_tiny.mmd": {
       "node_count": 2,
       "edge_count": 1,
       "edge_crossings": 0,
@@ -15942,7 +15942,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/flowchart_weave.mmd": {
+    "benches/fixtures/flowchart_weave.mmd": {
       "node_count": 16,
       "edge_count": 22,
       "edge_crossings": 32,
@@ -16107,7 +16107,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/gantt_medium.mmd": {
+    "benches/fixtures/gantt_medium.mmd": {
       "node_count": 0,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -16233,7 +16233,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/gitgraph_medium.mmd": {
+    "benches/fixtures/gitgraph_medium.mmd": {
       "node_count": 1,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -16359,7 +16359,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/journey_medium.mmd": {
+    "benches/fixtures/journey_medium.mmd": {
       "node_count": 1,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -16485,7 +16485,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/kanban_medium.mmd": {
+    "benches/fixtures/kanban_medium.mmd": {
       "node_count": 4,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -16611,7 +16611,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/mindmap_medium.mmd": {
+    "benches/fixtures/mindmap_medium.mmd": {
       "node_count": 11,
       "edge_count": 10,
       "edge_crossings": 0,
@@ -16737,7 +16737,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/packet_medium.mmd": {
+    "benches/fixtures/packet_medium.mmd": {
       "node_count": 3,
       "edge_count": 2,
       "edge_crossings": 0,
@@ -16863,7 +16863,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/pie_medium.mmd": {
+    "benches/fixtures/pie_medium.mmd": {
       "node_count": 0,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -16989,7 +16989,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/quadrant_medium.mmd": {
+    "benches/fixtures/quadrant_medium.mmd": {
       "node_count": 0,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -17115,7 +17115,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/radar_medium.mmd": {
+    "benches/fixtures/radar_medium.mmd": {
       "node_count": 2,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -17241,7 +17241,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/requirement_medium.mmd": {
+    "benches/fixtures/requirement_medium.mmd": {
       "node_count": 3,
       "edge_count": 2,
       "edge_crossings": 0,
@@ -17406,7 +17406,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/sankey_medium.mmd": {
+    "benches/fixtures/sankey_medium.mmd": {
       "node_count": 4,
       "edge_count": 4,
       "edge_crossings": 0,
@@ -17549,7 +17549,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/sequence.mmd": {
+    "benches/fixtures/sequence.mmd": {
       "node_count": 3,
       "edge_count": 8,
       "edge_crossings": 0,
@@ -17714,7 +17714,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/sequence_medium.mmd": {
+    "benches/fixtures/sequence_medium.mmd": {
       "node_count": 5,
       "edge_count": 20,
       "edge_crossings": 0,
@@ -17879,7 +17879,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/sequence_tiny.mmd": {
+    "benches/fixtures/sequence_tiny.mmd": {
       "node_count": 2,
       "edge_count": 1,
       "edge_crossings": 0,
@@ -18044,7 +18044,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/state.mmd": {
+    "benches/fixtures/state.mmd": {
       "node_count": 6,
       "edge_count": 7,
       "edge_crossings": 0,
@@ -18209,7 +18209,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/state_medium.mmd": {
+    "benches/fixtures/state_medium.mmd": {
       "node_count": 13,
       "edge_count": 12,
       "edge_crossings": 0,
@@ -18374,7 +18374,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/state_tiny.mmd": {
+    "benches/fixtures/state_tiny.mmd": {
       "node_count": 2,
       "edge_count": 1,
       "edge_crossings": 0,
@@ -18500,7 +18500,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/timeline_medium.mmd": {
+    "benches/fixtures/timeline_medium.mmd": {
       "node_count": 1,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -18626,7 +18626,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/treemap_medium.mmd": {
+    "benches/fixtures/treemap_medium.mmd": {
       "node_count": 7,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -18752,7 +18752,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/xychart_medium.mmd": {
+    "benches/fixtures/xychart_medium.mmd": {
       "node_count": 0,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -18878,7 +18878,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/benches/fixtures/zenuml_medium.mmd": {
+    "benches/fixtures/zenuml_medium.mmd": {
       "node_count": 2,
       "edge_count": 4,
       "edge_crossings": 0,
@@ -19043,7 +19043,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/architecture_basic.mmd": {
+    "docs/comparison_sources/architecture_basic.mmd": {
       "node_count": 4,
       "edge_count": 3,
       "edge_crossings": 0,
@@ -19186,7 +19186,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/block_basic.mmd": {
+    "docs/comparison_sources/block_basic.mmd": {
       "node_count": 6,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -19312,7 +19312,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/c4_basic.mmd": {
+    "docs/comparison_sources/c4_basic.mmd": {
       "node_count": 4,
       "edge_count": 3,
       "edge_crossings": 0,
@@ -19455,7 +19455,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/c4_container.mmd": {
+    "docs/comparison_sources/c4_container.mmd": {
       "node_count": 7,
       "edge_count": 6,
       "edge_crossings": 5,
@@ -19598,7 +19598,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/class_basic.mmd": {
+    "docs/comparison_sources/class_basic.mmd": {
       "node_count": 2,
       "edge_count": 1,
       "edge_crossings": 0,
@@ -19763,7 +19763,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/class_full.mmd": {
+    "docs/comparison_sources/class_full.mmd": {
       "node_count": 6,
       "edge_count": 5,
       "edge_crossings": 0,
@@ -19928,7 +19928,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/class_interface.mmd": {
+    "docs/comparison_sources/class_interface.mmd": {
       "node_count": 4,
       "edge_count": 3,
       "edge_crossings": 0,
@@ -20054,7 +20054,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/class_multiplicity.mmd": {
+    "docs/comparison_sources/class_multiplicity.mmd": {
       "node_count": 2,
       "edge_count": 1,
       "edge_crossings": 0,
@@ -20219,7 +20219,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/class_patterns.mmd": {
+    "docs/comparison_sources/class_patterns.mmd": {
       "node_count": 5,
       "edge_count": 4,
       "edge_crossings": 0,
@@ -20384,7 +20384,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/class_relations.mmd": {
+    "docs/comparison_sources/class_relations.mmd": {
       "node_count": 3,
       "edge_count": 2,
       "edge_crossings": 0,
@@ -20549,7 +20549,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/er_basic.mmd": {
+    "docs/comparison_sources/er_basic.mmd": {
       "node_count": 2,
       "edge_count": 1,
       "edge_crossings": 0,
@@ -20714,7 +20714,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/er_blog.mmd": {
+    "docs/comparison_sources/er_blog.mmd": {
       "node_count": 7,
       "edge_count": 7,
       "edge_crossings": 4,
@@ -20879,7 +20879,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/er_ecommerce.mmd": {
+    "docs/comparison_sources/er_ecommerce.mmd": {
       "node_count": 5,
       "edge_count": 4,
       "edge_crossings": 0,
@@ -21044,7 +21044,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/er_extended.mmd": {
+    "docs/comparison_sources/er_extended.mmd": {
       "node_count": 4,
       "edge_count": 3,
       "edge_crossings": 0,
@@ -21209,7 +21209,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_auth.mmd": {
+    "docs/comparison_sources/flowchart_auth.mmd": {
       "node_count": 10,
       "edge_count": 13,
       "edge_crossings": 0,
@@ -21374,7 +21374,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_back_edges.mmd": {
+    "docs/comparison_sources/flowchart_back_edges.mmd": {
       "node_count": 7,
       "edge_count": 8,
       "edge_crossings": 0,
@@ -21539,7 +21539,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_basic.mmd": {
+    "docs/comparison_sources/flowchart_basic.mmd": {
       "node_count": 5,
       "edge_count": 5,
       "edge_crossings": 0,
@@ -21704,7 +21704,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_bt.mmd": {
+    "docs/comparison_sources/flowchart_bt.mmd": {
       "node_count": 6,
       "edge_count": 6,
       "edge_crossings": 0,
@@ -21869,7 +21869,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_cicd.mmd": {
+    "docs/comparison_sources/flowchart_cicd.mmd": {
       "node_count": 11,
       "edge_count": 14,
       "edge_crossings": 0,
@@ -22034,7 +22034,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_complex.mmd": {
+    "docs/comparison_sources/flowchart_complex.mmd": {
       "node_count": 13,
       "edge_count": 19,
       "edge_crossings": 3,
@@ -22199,7 +22199,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_cross_subgraph_labels.mmd": {
+    "docs/comparison_sources/flowchart_cross_subgraph_labels.mmd": {
       "node_count": 7,
       "edge_count": 9,
       "edge_crossings": 0,
@@ -22364,7 +22364,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_cycle_entry_exit.mmd": {
+    "docs/comparison_sources/flowchart_cycle_entry_exit.mmd": {
       "node_count": 8,
       "edge_count": 10,
       "edge_crossings": 0,
@@ -22529,7 +22529,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_cycles.mmd": {
+    "docs/comparison_sources/flowchart_cycles.mmd": {
       "node_count": 8,
       "edge_count": 9,
       "edge_crossings": 0,
@@ -22694,7 +22694,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_dense.mmd": {
+    "docs/comparison_sources/flowchart_dense.mmd": {
       "node_count": 8,
       "edge_count": 15,
       "edge_crossings": 7,
@@ -22820,7 +22820,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_disconnected.mmd": {
+    "docs/comparison_sources/flowchart_disconnected.mmd": {
       "node_count": 10,
       "edge_count": 6,
       "edge_crossings": 0,
@@ -22985,7 +22985,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_edges.mmd": {
+    "docs/comparison_sources/flowchart_edges.mmd": {
       "node_count": 14,
       "edge_count": 7,
       "edge_crossings": 0,
@@ -23111,7 +23111,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_hub_spoke.mmd": {
+    "docs/comparison_sources/flowchart_hub_spoke.mmd": {
       "node_count": 8,
       "edge_count": 10,
       "edge_crossings": 1,
@@ -23237,7 +23237,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_labels.mmd": {
+    "docs/comparison_sources/flowchart_labels.mmd": {
       "node_count": 4,
       "edge_count": 6,
       "edge_crossings": 0,
@@ -23402,7 +23402,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_nested_subgraphs.mmd": {
+    "docs/comparison_sources/flowchart_nested_subgraphs.mmd": {
       "node_count": 7,
       "edge_count": 7,
       "edge_crossings": 1,
@@ -23528,7 +23528,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_opaque.mmd": {
+    "docs/comparison_sources/flowchart_opaque.mmd": {
       "node_count": 9,
       "edge_count": 16,
       "edge_crossings": 14,
@@ -23693,7 +23693,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_ports.mmd": {
+    "docs/comparison_sources/flowchart_ports.mmd": {
       "node_count": 6,
       "edge_count": 6,
       "edge_crossings": 0,
@@ -23858,7 +23858,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_rl.mmd": {
+    "docs/comparison_sources/flowchart_rl.mmd": {
       "node_count": 7,
       "edge_count": 7,
       "edge_crossings": 0,
@@ -24023,7 +24023,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_shapes.mmd": {
+    "docs/comparison_sources/flowchart_shapes.mmd": {
       "node_count": 11,
       "edge_count": 10,
       "edge_crossings": 0,
@@ -24149,7 +24149,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_styles.mmd": {
+    "docs/comparison_sources/flowchart_styles.mmd": {
       "node_count": 4,
       "edge_count": 2,
       "edge_crossings": 0,
@@ -24275,7 +24275,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_subgraph.mmd": {
+    "docs/comparison_sources/flowchart_subgraph.mmd": {
       "node_count": 4,
       "edge_count": 3,
       "edge_crossings": 0,
@@ -24401,7 +24401,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_subgraph_dir.mmd": {
+    "docs/comparison_sources/flowchart_subgraph_dir.mmd": {
       "node_count": 5,
       "edge_count": 4,
       "edge_crossings": 0,
@@ -24544,7 +24544,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/flowchart_td.mmd": {
+    "docs/comparison_sources/flowchart_td.mmd": {
       "node_count": 7,
       "edge_count": 7,
       "edge_crossings": 0,
@@ -24709,7 +24709,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/gantt_basic.mmd": {
+    "docs/comparison_sources/gantt_basic.mmd": {
       "node_count": 0,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -24835,7 +24835,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/gantt_full.mmd": {
+    "docs/comparison_sources/gantt_full.mmd": {
       "node_count": 0,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -24961,7 +24961,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/gantt_release.mmd": {
+    "docs/comparison_sources/gantt_release.mmd": {
       "node_count": 0,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -25087,7 +25087,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/gantt_sections.mmd": {
+    "docs/comparison_sources/gantt_sections.mmd": {
       "node_count": 0,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -25213,7 +25213,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/gitgraph_basic.mmd": {
+    "docs/comparison_sources/gitgraph_basic.mmd": {
       "node_count": 1,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -25339,7 +25339,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/gitgraph_branching.mmd": {
+    "docs/comparison_sources/gitgraph_branching.mmd": {
       "node_count": 1,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -25465,7 +25465,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/gitgraph_parallel.mmd": {
+    "docs/comparison_sources/gitgraph_parallel.mmd": {
       "node_count": 1,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -25591,7 +25591,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/gitgraph_release.mmd": {
+    "docs/comparison_sources/gitgraph_release.mmd": {
       "node_count": 1,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -25717,7 +25717,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/journey_basic.mmd": {
+    "docs/comparison_sources/journey_basic.mmd": {
       "node_count": 1,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -25843,7 +25843,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/journey_shopping.mmd": {
+    "docs/comparison_sources/journey_shopping.mmd": {
       "node_count": 1,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -25969,7 +25969,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/journey_team.mmd": {
+    "docs/comparison_sources/journey_team.mmd": {
       "node_count": 1,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -26095,7 +26095,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/kanban_basic.mmd": {
+    "docs/comparison_sources/kanban_basic.mmd": {
       "node_count": 8,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -26221,7 +26221,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/mindmap_basic.mmd": {
+    "docs/comparison_sources/mindmap_basic.mmd": {
       "node_count": 4,
       "edge_count": 3,
       "edge_crossings": 0,
@@ -26347,7 +26347,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/mindmap_deep.mmd": {
+    "docs/comparison_sources/mindmap_deep.mmd": {
       "node_count": 12,
       "edge_count": 11,
       "edge_crossings": 0,
@@ -26473,7 +26473,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/mindmap_project.mmd": {
+    "docs/comparison_sources/mindmap_project.mmd": {
       "node_count": 20,
       "edge_count": 19,
       "edge_crossings": 0,
@@ -26599,7 +26599,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/mindmap_shapes.mmd": {
+    "docs/comparison_sources/mindmap_shapes.mmd": {
       "node_count": 7,
       "edge_count": 6,
       "edge_crossings": 0,
@@ -26725,7 +26725,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/packet_basic.mmd": {
+    "docs/comparison_sources/packet_basic.mmd": {
       "node_count": 12,
       "edge_count": 11,
       "edge_crossings": 0,
@@ -26851,7 +26851,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/pie_basic.mmd": {
+    "docs/comparison_sources/pie_basic.mmd": {
       "node_count": 0,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -26977,7 +26977,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/pie_multicolor.mmd": {
+    "docs/comparison_sources/pie_multicolor.mmd": {
       "node_count": 0,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -27103,7 +27103,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/pie_segments.mmd": {
+    "docs/comparison_sources/pie_segments.mmd": {
       "node_count": 0,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -27229,7 +27229,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/quadrant_basic.mmd": {
+    "docs/comparison_sources/quadrant_basic.mmd": {
       "node_count": 0,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -27355,7 +27355,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/quadrant_strategy.mmd": {
+    "docs/comparison_sources/quadrant_strategy.mmd": {
       "node_count": 0,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -27481,7 +27481,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/quadrant_tech.mmd": {
+    "docs/comparison_sources/quadrant_tech.mmd": {
       "node_count": 0,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -27607,7 +27607,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/radar_basic.mmd": {
+    "docs/comparison_sources/radar_basic.mmd": {
       "node_count": 2,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -27733,7 +27733,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/requirement_basic.mmd": {
+    "docs/comparison_sources/requirement_basic.mmd": {
       "node_count": 4,
       "edge_count": 3,
       "edge_crossings": 0,
@@ -27898,7 +27898,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/sankey_basic.mmd": {
+    "docs/comparison_sources/sankey_basic.mmd": {
       "node_count": 9,
       "edge_count": 8,
       "edge_crossings": 0,
@@ -28041,7 +28041,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/sequence_autonumber.mmd": {
+    "docs/comparison_sources/sequence_autonumber.mmd": {
       "node_count": 4,
       "edge_count": 6,
       "edge_crossings": 0,
@@ -28206,7 +28206,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/sequence_basic.mmd": {
+    "docs/comparison_sources/sequence_basic.mmd": {
       "node_count": 2,
       "edge_count": 2,
       "edge_crossings": 0,
@@ -28371,7 +28371,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/sequence_collab.mmd": {
+    "docs/comparison_sources/sequence_collab.mmd": {
       "node_count": 3,
       "edge_count": 4,
       "edge_crossings": 0,
@@ -28536,7 +28536,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/sequence_frames.mmd": {
+    "docs/comparison_sources/sequence_frames.mmd": {
       "node_count": 3,
       "edge_count": 5,
       "edge_crossings": 0,
@@ -28701,7 +28701,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/sequence_loops.mmd": {
+    "docs/comparison_sources/sequence_loops.mmd": {
       "node_count": 3,
       "edge_count": 8,
       "edge_crossings": 0,
@@ -28866,7 +28866,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/sequence_microservice.mmd": {
+    "docs/comparison_sources/sequence_microservice.mmd": {
       "node_count": 6,
       "edge_count": 10,
       "edge_crossings": 0,
@@ -29031,7 +29031,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/sequence_notes.mmd": {
+    "docs/comparison_sources/sequence_notes.mmd": {
       "node_count": 3,
       "edge_count": 3,
       "edge_crossings": 0,
@@ -29196,7 +29196,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/sequence_oauth.mmd": {
+    "docs/comparison_sources/sequence_oauth.mmd": {
       "node_count": 4,
       "edge_count": 10,
       "edge_crossings": 0,
@@ -29361,7 +29361,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/state_basic.mmd": {
+    "docs/comparison_sources/state_basic.mmd": {
       "node_count": 4,
       "edge_count": 3,
       "edge_crossings": 0,
@@ -29526,7 +29526,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/state_choice.mmd": {
+    "docs/comparison_sources/state_choice.mmd": {
       "node_count": 8,
       "edge_count": 9,
       "edge_crossings": 0,
@@ -29691,7 +29691,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/state_fork.mmd": {
+    "docs/comparison_sources/state_fork.mmd": {
       "node_count": 9,
       "edge_count": 10,
       "edge_crossings": 0,
@@ -29834,7 +29834,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/state_nested.mmd": {
+    "docs/comparison_sources/state_nested.mmd": {
       "node_count": 8,
       "edge_count": 10,
       "edge_crossings": 0,
@@ -29999,7 +29999,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/state_note.mmd": {
+    "docs/comparison_sources/state_note.mmd": {
       "node_count": 4,
       "edge_count": 3,
       "edge_crossings": 0,
@@ -30125,7 +30125,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/state_parallel.mmd": {
+    "docs/comparison_sources/state_parallel.mmd": {
       "node_count": 6,
       "edge_count": 5,
       "edge_crossings": 0,
@@ -30290,7 +30290,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/state_tcp.mmd": {
+    "docs/comparison_sources/state_tcp.mmd": {
       "node_count": 11,
       "edge_count": 13,
       "edge_crossings": 0,
@@ -30455,7 +30455,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/timeline_basic.mmd": {
+    "docs/comparison_sources/timeline_basic.mmd": {
       "node_count": 1,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -30581,7 +30581,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/timeline_detailed.mmd": {
+    "docs/comparison_sources/timeline_detailed.mmd": {
       "node_count": 1,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -30707,7 +30707,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/timeline_release.mmd": {
+    "docs/comparison_sources/timeline_release.mmd": {
       "node_count": 1,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -30833,7 +30833,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/treemap_basic.mmd": {
+    "docs/comparison_sources/treemap_basic.mmd": {
       "node_count": 8,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -30959,7 +30959,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/xychart_basic.mmd": {
+    "docs/comparison_sources/xychart_basic.mmd": {
       "node_count": 0,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -31085,7 +31085,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/xychart_line.mmd": {
+    "docs/comparison_sources/xychart_line.mmd": {
       "node_count": 0,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -31211,7 +31211,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/xychart_mixed.mmd": {
+    "docs/comparison_sources/xychart_mixed.mmd": {
       "node_count": 0,
       "edge_count": 0,
       "edge_crossings": 0,
@@ -31337,7 +31337,7 @@
       "layout_anchor_miss_count": 0,
       "layout_anchor_miss_ratio": 0.0
     },
-    "/home/jeremy/mermaid-rs-renderer/docs/comparison_sources/xychart_series.mmd": {
+    "docs/comparison_sources/xychart_series.mmd": {
       "node_count": 0,
       "edge_count": 0,
       "edge_crossings": 0,

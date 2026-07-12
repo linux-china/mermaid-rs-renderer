@@ -199,7 +199,7 @@ def main() -> int:
     layout_score = load_layout_score()
     binary = Path(args.bin) if args.bin else pick_binary()
     if not binary.exists():
-        print(f"error: mmdr binary not found at {binary}; run `cargo build --release`",
+        print(f"error: mmdr binary not found at {binary}; run `cargo build --locked --release`",
               file=sys.stderr)
         return 2
 

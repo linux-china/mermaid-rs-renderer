@@ -1,13 +1,13 @@
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use crate::config::LayoutConfig;
 use crate::ir::Graph;
 
 use super::super::NodeLayout;
 use super::super::geometry::{
-    endpoint_side_for_point, segment_hits_node_shape_interior, segment_intrudes_endpoint_rect,
-    source_exits_outward, target_enters_from_outside,
+    endpoint_side_for_point, point_inside_node_shape_strict, segment_hits_node_shape_interior,
+    segment_intrudes_endpoint_rect, source_exits_outward, target_enters_from_outside,
 };
 use super::super::routing::{
     Obstacle, Segment, collinear_overlap_length, compress_path, edge_crossings_with_existing,
@@ -271,7 +271,9 @@ pub(in crate::layout) fn reduce_orthogonal_path_crossings(
     let outer_bottom = max_y + outer_pad;
     let use_perimeter_candidates = matches!(
         graph.kind,
-        crate::ir::DiagramKind::Er | crate::ir::DiagramKind::State
+        crate::ir::DiagramKind::Flowchart
+            | crate::ir::DiagramKind::Er
+            | crate::ir::DiagramKind::State
     );
     let forward: Vec<usize> = (0..routed_points.len()).collect();
     let reverse: Vec<usize> = (0..routed_points.len()).rev().collect();
@@ -305,6 +307,631 @@ pub(in crate::layout) fn reduce_orthogonal_path_crossings(
             break;
         }
     }
+}
+
+pub(in crate::layout) fn collapse_axis_aligned_flowchart_handoffs(
+    graph: &Graph,
+    nodes: &BTreeMap<String, NodeLayout>,
+    subgraphs: &[SubgraphLayout],
+    routed_points: &mut [Vec<(f32, f32)>],
+) {
+    let mut pair_counts: HashMap<(String, String), usize> = HashMap::new();
+    for edge in &graph.edges {
+        *pair_counts
+            .entry((edge.from.clone(), edge.to.clone()))
+            .or_insert(0) += 1;
+    }
+
+    for (idx, points) in routed_points.iter_mut().enumerate() {
+        if points.len() < 3 {
+            continue;
+        }
+        let Some(edge) = graph.edges.get(idx) else {
+            continue;
+        };
+        if edge.from == edge.to
+            || edge.label.is_some()
+            || edge.start_label.is_some()
+            || edge.end_label.is_some()
+            || pair_counts
+                .get(&(edge.from.clone(), edge.to.clone()))
+                .copied()
+                .unwrap_or(0)
+                > 1
+        {
+            continue;
+        }
+        let (Some(from), Some(to)) = (nodes.get(&edge.from), nodes.get(&edge.to)) else {
+            continue;
+        };
+        if from.hidden
+            || to.hidden
+            || from.anchor_subgraph.is_some()
+            || to.anchor_subgraph.is_some()
+        {
+            continue;
+        }
+        let from_center = (from.x + from.width / 2.0, from.y + from.height / 2.0);
+        let to_center = (to.x + to.width / 2.0, to.y + to.height / 2.0);
+        let candidate = if (from_center.0 - to_center.0).abs() <= 1.0 {
+            let x = (from_center.0 + to_center.0) * 0.5;
+            let from_y = if to_center.1 >= from_center.1 {
+                from.y + from.height
+            } else {
+                from.y
+            };
+            let to_y = if to_center.1 >= from_center.1 {
+                to.y
+            } else {
+                to.y + to.height
+            };
+            Some(vec![(x, from_y), (x, to_y)])
+        } else if (from_center.1 - to_center.1).abs() <= 1.0 {
+            let y = (from_center.1 + to_center.1) * 0.5;
+            let from_x = if to_center.0 >= from_center.0 {
+                from.x + from.width
+            } else {
+                from.x
+            };
+            let to_x = if to_center.0 >= from_center.0 {
+                to.x
+            } else {
+                to.x + to.width
+            };
+            Some(vec![(from_x, y), (to_x, y)])
+        } else {
+            None
+        };
+        let Some(candidate) = candidate else {
+            continue;
+        };
+        if path_length(&candidate) + 1.0 >= path_length(points) {
+            continue;
+        }
+        if flowchart_path_hits_non_endpoint_nodes(&candidate, &edge.from, &edge.to, nodes) {
+            continue;
+        }
+        let baseline_subgraph_hits =
+            flowchart_path_foreign_subgraph_hit_count(points, &edge.from, &edge.to, subgraphs);
+        let candidate_subgraph_hits =
+            flowchart_path_foreign_subgraph_hit_count(&candidate, &edge.from, &edge.to, subgraphs);
+        if candidate_subgraph_hits > baseline_subgraph_hits {
+            continue;
+        }
+        *points = candidate;
+    }
+}
+
+pub(in crate::layout) fn repair_flowchart_orthogonal_crossings(
+    graph: &Graph,
+    nodes: &BTreeMap<String, NodeLayout>,
+    subgraphs: &[SubgraphLayout],
+    routed_points: &mut [Vec<(f32, f32)>],
+    config: &LayoutConfig,
+) {
+    if graph.edges.len() < 2 {
+        return;
+    }
+    let margin = (config.node_spacing * 0.24).clamp(10.0, 24.0);
+
+    // Each accepted candidate strictly reduces this route's crossings against
+    // the current set, so let the pass drain dense graphs instead of stopping
+    // after an arbitrary four repairs. Keep a defensive cap for pathological
+    // inputs while scaling the budget with the number of edges.
+    let repair_budget = graph.edges.len().saturating_mul(2).clamp(4, 64);
+    for _ in 0..repair_budget {
+        let mut changed = false;
+        'pairs: for fixed_idx in 0..routed_points.len() {
+            for repair_idx in 0..routed_points.len() {
+                if fixed_idx == repair_idx || routed_points[repair_idx].len() < 2 {
+                    continue;
+                }
+                let Some(edge) = graph.edges.get(repair_idx) else {
+                    continue;
+                };
+                if edge.from == edge.to {
+                    continue;
+                }
+                for fixed_segment in routed_points[fixed_idx].windows(2) {
+                    for seg_idx in 0..routed_points[repair_idx].len().saturating_sub(1) {
+                        let a = routed_points[repair_idx][seg_idx];
+                        let b = routed_points[repair_idx][seg_idx + 1];
+                        let Some(crossing) =
+                            orthogonal_crossing(a, b, fixed_segment[0], fixed_segment[1])
+                        else {
+                            continue;
+                        };
+                        if let Some(candidate) = best_crossing_notch_candidate(
+                            graph,
+                            nodes,
+                            subgraphs,
+                            routed_points,
+                            repair_idx,
+                            seg_idx,
+                            crossing,
+                            (fixed_segment[0], fixed_segment[1]),
+                            margin,
+                        ) {
+                            routed_points[repair_idx] = candidate;
+                            changed = true;
+                            break 'pairs;
+                        }
+                    }
+                }
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
+
+    // Dense orthogonal layouts can reach a local minimum where removing one
+    // specific pairwise crossing merely exchanges it for different crossings.
+    // Make one deterministic pair-priority repair per edge. Prefer candidates
+    // that do not increase the global count, but let a substantially longer
+    // edge take a tightly bounded tradeoff to preserve a short interior edge.
+    // Consider local notches before outer lanes to avoid graph-wide detours.
+    let mut pair_priority_repaired = HashSet::new();
+    for fixed_idx in 0..routed_points.len() {
+        for repair_idx in 0..routed_points.len() {
+            if fixed_idx == repair_idx
+                || pair_priority_repaired.contains(&repair_idx)
+                || routed_points[repair_idx].len() < 4
+            {
+                continue;
+            }
+            if let Some(candidate) = best_pair_priority_crossing_candidate(
+                graph,
+                nodes,
+                subgraphs,
+                routed_points,
+                fixed_idx,
+                repair_idx,
+                margin,
+            ) {
+                routed_points[repair_idx] = candidate;
+                pair_priority_repaired.insert(repair_idx);
+            }
+        }
+    }
+}
+
+fn best_pair_priority_crossing_candidate(
+    graph: &Graph,
+    nodes: &BTreeMap<String, NodeLayout>,
+    subgraphs: &[SubgraphLayout],
+    routed_points: &[Vec<(f32, f32)>],
+    fixed_idx: usize,
+    repair_idx: usize,
+    margin: f32,
+) -> Option<Vec<(f32, f32)>> {
+    const LONG_EDGE_RATIO: f32 = 1.5;
+    const MAX_CROSSING_TRADEOFF: usize = 2;
+
+    let edge = graph.edges.get(repair_idx)?;
+    if edge.from == edge.to {
+        return None;
+    }
+    let fixed_points = routed_points.get(fixed_idx)?;
+    let repair_points = routed_points.get(repair_idx)?;
+    let mut fixed_segments = Vec::new();
+    append_path_segments(fixed_points, &mut fixed_segments);
+    let baseline_pair_crossings = edge_crossings_with_existing(repair_points, &fixed_segments).0;
+    if baseline_pair_crossings == 0 {
+        return None;
+    }
+
+    let mut other_segments = Vec::new();
+    for (idx, points) in routed_points.iter().enumerate() {
+        if idx != repair_idx {
+            append_path_segments(points, &mut other_segments);
+        }
+    }
+    let baseline_crossings = edge_crossings_with_existing(repair_points, &other_segments).0;
+    let baseline_subgraph_hits =
+        flowchart_path_foreign_subgraph_hit_count(repair_points, &edge.from, &edge.to, subgraphs);
+    let baseline_len = path_length(repair_points);
+    let fixed_len = path_length(fixed_points);
+    let mut candidates = Vec::new();
+    for fixed_segment in fixed_points.windows(2) {
+        for (seg_idx, segment) in repair_points.windows(2).enumerate() {
+            let Some(crossing) =
+                orthogonal_crossing(segment[0], segment[1], fixed_segment[0], fixed_segment[1])
+            else {
+                continue;
+            };
+            candidates.extend(crossing_notch_candidates(
+                repair_points,
+                seg_idx,
+                crossing,
+                (fixed_segment[0], fixed_segment[1]),
+                margin,
+            ));
+        }
+    }
+    candidates.extend(outer_crossing_detour_candidates(
+        repair_points,
+        nodes,
+        margin,
+    ));
+
+    let mut best: Option<(usize, f32, Vec<(f32, f32)>)> = None;
+    for raw_candidate in candidates {
+        for candidate in crossing_candidate_clearance_variants(&raw_candidate, edge, nodes, margin)
+        {
+            if flowchart_endpoint_reentry_count(&candidate, edge, nodes) > 0
+                || flowchart_endpoint_direction_violation_count(&candidate, edge, nodes) > 0
+                || flowchart_path_foreign_subgraph_hit_count(
+                    &candidate, &edge.from, &edge.to, subgraphs,
+                ) > baseline_subgraph_hits
+            {
+                continue;
+            }
+            let candidate_len = path_length(&candidate);
+            if candidate_len > baseline_len * 2.4 {
+                continue;
+            }
+            let pair_crossings = edge_crossings_with_existing(&candidate, &fixed_segments).0;
+            if pair_crossings >= baseline_pair_crossings {
+                continue;
+            }
+            let candidate_crossings = edge_crossings_with_existing(&candidate, &other_segments).0;
+            let bounded_long_edge_tradeoff = baseline_len >= fixed_len * LONG_EDGE_RATIO
+                && candidate_len <= baseline_len * LONG_EDGE_RATIO
+                && candidate_crossings <= baseline_crossings.saturating_add(MAX_CROSSING_TRADEOFF);
+            if candidate_crossings > baseline_crossings && !bounded_long_edge_tradeoff {
+                continue;
+            }
+            let replace = best.as_ref().is_none_or(|(best_crossings, best_len, _)| {
+                candidate_crossings < *best_crossings
+                    || (candidate_crossings == *best_crossings && candidate_len < *best_len)
+            });
+            if replace {
+                best = Some((candidate_crossings, candidate_len, candidate));
+            }
+        }
+    }
+    best.map(|(_, _, candidate)| candidate)
+}
+
+fn orthogonal_crossing(
+    a1: (f32, f32),
+    a2: (f32, f32),
+    b1: (f32, f32),
+    b2: (f32, f32),
+) -> Option<(f32, f32)> {
+    const EPS: f32 = 1e-3;
+    let a_vertical = (a1.0 - a2.0).abs() <= EPS;
+    let a_horizontal = (a1.1 - a2.1).abs() <= EPS;
+    let b_vertical = (b1.0 - b2.0).abs() <= EPS;
+    let b_horizontal = (b1.1 - b2.1).abs() <= EPS;
+
+    let strictly_between =
+        |value: f32, p: f32, q: f32| value > p.min(q) + EPS && value < p.max(q) - EPS;
+
+    if a_vertical && b_horizontal {
+        let x = a1.0;
+        let y = b1.1;
+        if strictly_between(x, b1.0, b2.0) && strictly_between(y, a1.1, a2.1) {
+            return Some((x, y));
+        }
+    } else if a_horizontal && b_vertical {
+        let x = b1.0;
+        let y = a1.1;
+        if strictly_between(x, a1.0, a2.0) && strictly_between(y, b1.1, b2.1) {
+            return Some((x, y));
+        }
+    }
+    None
+}
+
+fn best_crossing_notch_candidate(
+    graph: &Graph,
+    nodes: &BTreeMap<String, NodeLayout>,
+    subgraphs: &[SubgraphLayout],
+    routed_points: &[Vec<(f32, f32)>],
+    repair_idx: usize,
+    seg_idx: usize,
+    crossing: (f32, f32),
+    fixed_segment: Segment,
+    margin: f32,
+) -> Option<Vec<(f32, f32)>> {
+    let edge = graph.edges.get(repair_idx)?;
+    let mut other_segments = Vec::new();
+    for (idx, points) in routed_points.iter().enumerate() {
+        if idx == repair_idx {
+            continue;
+        }
+        append_path_segments(points, &mut other_segments);
+    }
+    let baseline_crossings =
+        edge_crossings_with_existing(&routed_points[repair_idx], &other_segments).0;
+    if baseline_crossings == 0 {
+        return None;
+    }
+
+    let baseline_len = path_length(&routed_points[repair_idx]);
+    let baseline_subgraph_hits = flowchart_path_foreign_subgraph_hit_count(
+        &routed_points[repair_idx],
+        &edge.from,
+        &edge.to,
+        subgraphs,
+    );
+    let mut best: Option<(usize, f32, Vec<(f32, f32)>)> = None;
+    let mut candidates = crossing_notch_candidates(
+        &routed_points[repair_idx],
+        seg_idx,
+        crossing,
+        fixed_segment,
+        margin,
+    );
+    candidates.extend(outer_crossing_detour_candidates(
+        &routed_points[repair_idx],
+        nodes,
+        margin,
+    ));
+    for raw_candidate in candidates {
+        for candidate in crossing_candidate_clearance_variants(&raw_candidate, edge, nodes, margin)
+        {
+            if flowchart_endpoint_reentry_count(&candidate, edge, nodes) > 0
+                || flowchart_endpoint_direction_violation_count(&candidate, edge, nodes) > 0
+                || flowchart_path_foreign_subgraph_hit_count(
+                    &candidate, &edge.from, &edge.to, subgraphs,
+                ) > baseline_subgraph_hits
+            {
+                continue;
+            }
+            let candidate_len = path_length(&candidate);
+            if candidate_len > baseline_len * 2.4 {
+                continue;
+            }
+            let candidate_crossings = edge_crossings_with_existing(&candidate, &other_segments).0;
+            if candidate_crossings >= baseline_crossings {
+                continue;
+            }
+            let replace = best.as_ref().is_none_or(|(best_crossings, best_len, _)| {
+                candidate_crossings < *best_crossings
+                    || (candidate_crossings == *best_crossings && candidate_len < *best_len)
+            });
+            if replace {
+                best = Some((candidate_crossings, candidate_len, candidate));
+            }
+        }
+    }
+    best.map(|(_, _, candidate)| candidate)
+}
+
+fn crossing_candidate_clearance_variants(
+    candidate: &[(f32, f32)],
+    edge: &crate::ir::Edge,
+    nodes: &BTreeMap<String, NodeLayout>,
+    clearance: f32,
+) -> Vec<Vec<(f32, f32)>> {
+    let Some((first_seg_idx, last_seg_idx, obstacle)) =
+        first_non_endpoint_node_hit(candidate, &edge.from, &edge.to, nodes)
+    else {
+        return vec![candidate.to_vec()];
+    };
+
+    let mut variants =
+        node_detour_candidates(candidate, first_seg_idx, last_seg_idx, &obstacle, clearance);
+    if first_seg_idx == last_seg_idx {
+        let a = candidate[first_seg_idx];
+        let b = candidate[first_seg_idx + 1];
+        if (a.1 - b.1).abs() <= 1e-3 {
+            for y in [
+                obstacle.y - clearance,
+                obstacle.y + obstacle.height + clearance,
+            ] {
+                if let Some(variant) = bump_orthogonal_segment(candidate, first_seg_idx, y - a.1) {
+                    variants.push(variant);
+                }
+            }
+        } else if (a.0 - b.0).abs() <= 1e-3 {
+            for x in [
+                obstacle.x - clearance,
+                obstacle.x + obstacle.width + clearance,
+            ] {
+                if let Some(variant) = bump_orthogonal_segment(candidate, first_seg_idx, x - a.0) {
+                    variants.push(variant);
+                }
+            }
+        }
+    }
+    variants.retain(|variant| {
+        !flowchart_path_hits_non_endpoint_nodes(variant, &edge.from, &edge.to, nodes)
+    });
+    variants
+}
+
+fn crossing_notch_candidates(
+    points: &[(f32, f32)],
+    seg_idx: usize,
+    crossing: (f32, f32),
+    fixed_segment: Segment,
+    margin: f32,
+) -> Vec<Vec<(f32, f32)>> {
+    if seg_idx + 1 >= points.len() {
+        return Vec::new();
+    }
+    let a = points[seg_idx];
+    let b = points[seg_idx + 1];
+    let horizontal = (a.1 - b.1).abs() <= 1e-3;
+    let vertical = (a.0 - b.0).abs() <= 1e-3;
+    if !horizontal && !vertical {
+        return Vec::new();
+    }
+
+    let mut out = Vec::new();
+    if horizontal {
+        let dir = if b.0 >= a.0 { 1.0 } else { -1.0 };
+        let before = crossing.0 - dir * margin;
+        let after = crossing.0 + dir * margin;
+        let fixed_min_y = fixed_segment.0.1.min(fixed_segment.1.1);
+        let fixed_max_y = fixed_segment.0.1.max(fixed_segment.1.1);
+        if seg_idx > 0 {
+            let prev = points[seg_idx - 1];
+            let prev_is_vertical = (prev.0 - a.0).abs() <= 1e-3;
+            let prev_lane_is_clear = prev.1 < fixed_min_y - 1e-3 || prev.1 > fixed_max_y + 1e-3;
+            if prev_is_vertical && prev_lane_is_clear {
+                let mut candidate = Vec::with_capacity(points.len());
+                candidate.extend_from_slice(&points[..seg_idx]);
+                candidate.push((b.0, prev.1));
+                candidate.extend_from_slice(&points[(seg_idx + 1)..]);
+                out.push(compress_path(&candidate));
+            }
+        }
+        if seg_idx + 2 < points.len() {
+            let next = points[seg_idx + 2];
+            let next_is_vertical = (next.0 - b.0).abs() <= 1e-3;
+            let next_lane_is_clear = next.1 < fixed_min_y - 1e-3 || next.1 > fixed_max_y + 1e-3;
+            if next_is_vertical && next_lane_is_clear {
+                let mut candidate = Vec::with_capacity(points.len());
+                candidate.extend_from_slice(&points[..=seg_idx]);
+                candidate.push((a.0, next.1));
+                candidate.extend_from_slice(&points[(seg_idx + 2)..]);
+                out.push(compress_path(&candidate));
+            }
+        }
+        for detour_y in [fixed_min_y - 1.0, fixed_max_y + 1.0] {
+            if let Some(candidate) = bump_orthogonal_segment(points, seg_idx, detour_y - a.1) {
+                out.push(candidate);
+            }
+        }
+        for detour_y in [fixed_min_y - margin, fixed_max_y + margin] {
+            if let Some(candidate) = bump_orthogonal_segment(points, seg_idx, detour_y - a.1) {
+                out.push(candidate);
+            }
+            let mut candidate = Vec::with_capacity(points.len() + 4);
+            candidate.extend_from_slice(&points[..=seg_idx]);
+            candidate.push((before, a.1));
+            candidate.push((before, detour_y));
+            candidate.push((after, detour_y));
+            candidate.push((after, a.1));
+            candidate.extend_from_slice(&points[(seg_idx + 1)..]);
+            out.push(compress_path(&candidate));
+        }
+    } else if vertical {
+        let dir = if b.1 >= a.1 { 1.0 } else { -1.0 };
+        let before = crossing.1 - dir * margin;
+        let after = crossing.1 + dir * margin;
+        let fixed_min_x = fixed_segment.0.0.min(fixed_segment.1.0);
+        let fixed_max_x = fixed_segment.0.0.max(fixed_segment.1.0);
+        if seg_idx > 0 {
+            let prev = points[seg_idx - 1];
+            let prev_is_horizontal = (prev.1 - a.1).abs() <= 1e-3;
+            let prev_lane_is_clear = prev.0 < fixed_min_x - 1e-3 || prev.0 > fixed_max_x + 1e-3;
+            if prev_is_horizontal && prev_lane_is_clear {
+                let mut candidate = Vec::with_capacity(points.len());
+                candidate.extend_from_slice(&points[..seg_idx]);
+                candidate.push((prev.0, b.1));
+                candidate.extend_from_slice(&points[(seg_idx + 1)..]);
+                out.push(compress_path(&candidate));
+            }
+        }
+        if seg_idx + 2 < points.len() {
+            let next = points[seg_idx + 2];
+            let next_is_horizontal = (next.1 - b.1).abs() <= 1e-3;
+            let next_lane_is_clear = next.0 < fixed_min_x - 1e-3 || next.0 > fixed_max_x + 1e-3;
+            if next_is_horizontal && next_lane_is_clear {
+                let mut candidate = Vec::with_capacity(points.len());
+                candidate.extend_from_slice(&points[..=seg_idx]);
+                candidate.push((next.0, a.1));
+                candidate.extend_from_slice(&points[(seg_idx + 2)..]);
+                out.push(compress_path(&candidate));
+            }
+        }
+        for detour_x in [fixed_min_x - 1.0, fixed_max_x + 1.0] {
+            if let Some(candidate) = bump_orthogonal_segment(points, seg_idx, detour_x - a.0) {
+                out.push(candidate);
+            }
+        }
+        for detour_x in [fixed_min_x - margin, fixed_max_x + margin] {
+            if let Some(candidate) = bump_orthogonal_segment(points, seg_idx, detour_x - a.0) {
+                out.push(candidate);
+            }
+            let mut candidate = Vec::with_capacity(points.len() + 4);
+            candidate.extend_from_slice(&points[..=seg_idx]);
+            candidate.push((a.0, before));
+            candidate.push((detour_x, before));
+            candidate.push((detour_x, after));
+            candidate.push((a.0, after));
+            candidate.extend_from_slice(&points[(seg_idx + 1)..]);
+            out.push(compress_path(&candidate));
+        }
+    }
+    out
+}
+
+fn outer_crossing_detour_candidates(
+    points: &[(f32, f32)],
+    nodes: &BTreeMap<String, NodeLayout>,
+    margin: f32,
+) -> Vec<Vec<(f32, f32)>> {
+    if points.len() < 4 {
+        return Vec::new();
+    }
+    let visible = nodes
+        .values()
+        .filter(|node| !node.hidden && node.anchor_subgraph.is_none());
+    let (mut min_x, mut max_x, mut min_y, mut max_y) = (f32::MAX, f32::MIN, f32::MAX, f32::MIN);
+    for node in visible {
+        min_x = min_x.min(node.x);
+        max_x = max_x.max(node.x + node.width);
+        min_y = min_y.min(node.y);
+        max_y = max_y.max(node.y + node.height);
+    }
+    if !min_x.is_finite() || !max_x.is_finite() || !min_y.is_finite() || !max_y.is_finite() {
+        return Vec::new();
+    }
+
+    let pad = margin.max(12.0) * 2.0;
+    let first = points[0];
+    let start_stub = points[1];
+    let end_stub = points[points.len() - 2];
+    let last = points[points.len() - 1];
+    let top = min_y - pad;
+    let bottom = max_y + pad;
+    let left = min_x - pad;
+    let right = max_x + pad;
+
+    [
+        vec![
+            first,
+            start_stub,
+            (start_stub.0, top),
+            (end_stub.0, top),
+            end_stub,
+            last,
+        ],
+        vec![
+            first,
+            start_stub,
+            (start_stub.0, bottom),
+            (end_stub.0, bottom),
+            end_stub,
+            last,
+        ],
+        vec![
+            first,
+            start_stub,
+            (left, start_stub.1),
+            (left, end_stub.1),
+            end_stub,
+            last,
+        ],
+        vec![
+            first,
+            start_stub,
+            (right, start_stub.1),
+            (right, end_stub.1),
+            end_stub,
+            last,
+        ],
+    ]
+    .into_iter()
+    .map(|candidate| compress_path(&candidate))
+    .collect()
 }
 
 pub(in crate::layout) fn flowchart_path_hits_non_endpoint_nodes(
@@ -707,6 +1334,16 @@ fn path_foreign_subgraph_hits(path: &[(f32, f32)], obstacles: &[Obstacle]) -> us
     hits
 }
 
+pub(in crate::layout) fn flowchart_path_foreign_subgraph_hit_count(
+    path: &[(f32, f32)],
+    edge_from: &str,
+    edge_to: &str,
+    subgraphs: &[SubgraphLayout],
+) -> usize {
+    let obstacles = foreign_subgraph_obstacles(edge_from, edge_to, subgraphs, 0.0);
+    path_foreign_subgraph_hits(path, &obstacles)
+}
+
 fn first_foreign_subgraph_hit(
     path: &[(f32, f32)],
     obstacles: &[Obstacle],
@@ -871,12 +1508,17 @@ fn first_endpoint_reentry_span(
                 } else {
                     next_idx == last_segment_idx
                 };
+                // A short segment can start inside the endpoint yet have no sampled
+                // interior point. Keep extending until the replacement endpoint is
+                // known to be outside, otherwise every detour remains anchored inside
+                // the node and cannot reduce the re-entry count.
                 if next_allowed
-                    || !segment_hits_node_shape_interior(
-                        points[next_idx],
-                        points[next_idx + 1],
-                        node,
-                    )
+                    || (!point_inside_node_shape_strict(node, points[next_idx])
+                        && !segment_hits_node_shape_interior(
+                            points[next_idx],
+                            points[next_idx + 1],
+                            node,
+                        ))
                 {
                     break;
                 }
@@ -1515,7 +2157,283 @@ pub(in crate::layout) fn simplify_flowchart_detour_rectangles(
 
 #[cfg(test)]
 mod tests {
-    use super::collapse_axis_aligned_runs;
+    use std::collections::BTreeMap;
+
+    use crate::config::LayoutConfig;
+    use crate::ir::{Edge, EdgeStyle, Graph, NodeShape, NodeStyle};
+    use crate::layout::routing::edge_crossings_with_existing;
+    use crate::layout::{NodeLayout, SubgraphLayout, TextBlock};
+
+    use super::{
+        append_path_segments, best_pair_priority_crossing_candidate,
+        collapse_axis_aligned_flowchart_handoffs, collapse_axis_aligned_runs,
+        detour_flowchart_paths_around_non_endpoint_nodes,
+        flowchart_endpoint_direction_violation_count, flowchart_endpoint_reentry_count,
+        flowchart_path_foreign_subgraph_hit_count, flowchart_path_hits_non_endpoint_nodes,
+        repair_flowchart_endpoint_reentries,
+    };
+
+    fn edge(from: &str, to: &str) -> Edge {
+        Edge {
+            from: from.to_string(),
+            to: to.to_string(),
+            label: None,
+            start_label: None,
+            end_label: None,
+            directed: true,
+            arrow_start: false,
+            arrow_end: true,
+            arrow_start_kind: None,
+            arrow_end_kind: None,
+            start_decoration: None,
+            end_decoration: None,
+            style: EdgeStyle::Solid,
+        }
+    }
+
+    fn node_layout(id: &str, x: f32, y: f32, width: f32, height: f32) -> NodeLayout {
+        NodeLayout {
+            id: id.to_string(),
+            x,
+            y,
+            width,
+            height,
+            label: TextBlock {
+                lines: vec![id.to_string()],
+                width: 20.0,
+                height: 12.0,
+            },
+            shape: NodeShape::Rectangle,
+            style: NodeStyle::default(),
+            link: None,
+            anchor_subgraph: None,
+            hidden: false,
+            icon: None,
+        }
+    }
+
+    fn subgraph_layout(label: &str, x: f32, y: f32, width: f32, height: f32) -> SubgraphLayout {
+        SubgraphLayout {
+            id: Some(label.to_string()),
+            label: label.to_string(),
+            label_block: TextBlock {
+                lines: vec![label.to_string()],
+                width: 20.0,
+                height: 12.0,
+            },
+            nodes: vec![format!("{label}-member")],
+            x,
+            y,
+            width,
+            height,
+            style: NodeStyle::default(),
+            icon: None,
+        }
+    }
+
+    #[test]
+    fn endpoint_reentry_repair_expands_past_short_inside_self_loop_segment() {
+        let mut graph = Graph::new();
+        graph.edges = vec![edge("B", "B")];
+        let mut nodes = BTreeMap::new();
+        nodes.insert("B".to_string(), node_layout("B", 0.0, 10.0, 120.0, 50.0));
+        let mut routed_points = vec![vec![
+            (120.0, 35.0),
+            (150.0, 35.0),
+            (150.0, 12.9),
+            (60.0, 12.9),
+            (60.0, 0.4),
+            (60.0, 10.0),
+        ]];
+
+        assert_eq!(
+            flowchart_endpoint_direction_violation_count(
+                &routed_points[0],
+                &graph.edges[0],
+                &nodes,
+            ),
+            0
+        );
+        assert_eq!(
+            flowchart_endpoint_reentry_count(&routed_points[0], &graph.edges[0], &nodes),
+            1,
+            "the regression path must contain the sampled self-loop re-entry"
+        );
+
+        repair_flowchart_endpoint_reentries(
+            &graph,
+            &nodes,
+            &mut routed_points,
+            &LayoutConfig::default(),
+        );
+
+        assert_eq!(
+            flowchart_endpoint_reentry_count(&routed_points[0], &graph.edges[0], &nodes),
+            0,
+            "repair endpoints must be outside the endpoint shape"
+        );
+        assert_eq!(
+            flowchart_endpoint_direction_violation_count(
+                &routed_points[0],
+                &graph.edges[0],
+                &nodes,
+            ),
+            0,
+            "repair must preserve both self-loop port directions"
+        );
+    }
+
+    #[test]
+    fn long_crossing_route_can_take_bounded_local_detour_around_short_route() {
+        let mut graph = Graph::new();
+        graph.edges = vec![
+            edge("fixed", "fixed-target"),
+            edge("repair", "repair-target"),
+            edge("top-a", "top-a-target"),
+            edge("top-b", "top-b-target"),
+            edge("bottom-a", "bottom-a-target"),
+            edge("bottom-b", "bottom-b-target"),
+        ];
+        let routed_points = vec![
+            vec![(10.0, -10.0), (10.0, 10.0)],
+            vec![(0.0, -20.0), (0.0, 0.0), (20.0, 0.0), (20.0, 20.0)],
+            vec![(5.0, -30.0), (5.0, -5.0)],
+            vec![(7.0, -30.0), (7.0, -5.0)],
+            vec![(13.0, 5.0), (13.0, 30.0)],
+            vec![(15.0, 5.0), (15.0, 30.0)],
+        ];
+        let nodes = BTreeMap::new();
+        let candidate =
+            best_pair_priority_crossing_candidate(&graph, &nodes, &[], &routed_points, 0, 1, 10.0)
+                .expect("the longer route should take a bounded detour around the short route");
+
+        let mut fixed_segments = Vec::new();
+        append_path_segments(&routed_points[0], &mut fixed_segments);
+        assert_eq!(
+            edge_crossings_with_existing(&candidate, &fixed_segments).0,
+            0,
+            "the neutral candidate should remove the selected pairwise crossing"
+        );
+
+        let mut other_segments = Vec::new();
+        for (idx, points) in routed_points.iter().enumerate() {
+            if idx != 1 {
+                append_path_segments(points, &mut other_segments);
+            }
+        }
+        let baseline_crossings = edge_crossings_with_existing(&routed_points[1], &other_segments).0;
+        let candidate_crossings = edge_crossings_with_existing(&candidate, &other_segments).0;
+        assert!(
+            candidate_crossings > baseline_crossings,
+            "the fixture should exercise the bounded long-edge tradeoff"
+        );
+        assert!(candidate_crossings <= baseline_crossings + 2);
+    }
+
+    #[test]
+    fn crossing_repair_rejects_detours_through_foreign_subgraphs() {
+        let mut graph = Graph::new();
+        graph.edges = vec![
+            edge("fixed", "fixed-target"),
+            edge("repair", "repair-target"),
+            edge("top-a", "top-a-target"),
+            edge("top-b", "top-b-target"),
+            edge("bottom-a", "bottom-a-target"),
+            edge("bottom-b", "bottom-b-target"),
+        ];
+        let routed_points = vec![
+            vec![(10.0, -10.0), (10.0, 10.0)],
+            vec![(0.0, -20.0), (0.0, 0.0), (20.0, 0.0), (20.0, 20.0)],
+            vec![(5.0, -30.0), (5.0, -5.0)],
+            vec![(7.0, -30.0), (7.0, -5.0)],
+            vec![(13.0, 5.0), (13.0, 30.0)],
+            vec![(15.0, 5.0), (15.0, 30.0)],
+        ];
+        let subgraphs = vec![
+            subgraph_layout("top-lane", 1.0, -21.0, 18.0, 12.0),
+            subgraph_layout("bottom-lane", 1.0, 9.0, 18.0, 12.0),
+        ];
+
+        assert_eq!(
+            flowchart_path_foreign_subgraph_hit_count(
+                &routed_points[1],
+                "repair",
+                "repair-target",
+                &subgraphs,
+            ),
+            0,
+            "the baseline route must be containment-clean"
+        );
+        assert!(
+            best_pair_priority_crossing_candidate(
+                &graph,
+                &BTreeMap::new(),
+                &subgraphs,
+                &routed_points,
+                0,
+                1,
+                10.0,
+            )
+            .is_none(),
+            "crossing repair must not trade a crossing for a foreign-subgraph intrusion"
+        );
+    }
+
+    #[test]
+    fn axis_aligned_handoff_collapse_preserves_foreign_subgraph_detour() {
+        let mut graph = Graph::new();
+        graph.edges = vec![edge("A", "B")];
+        let mut nodes = BTreeMap::new();
+        nodes.insert("A".to_string(), node_layout("A", 0.0, 0.0, 20.0, 20.0));
+        nodes.insert("B".to_string(), node_layout("B", 100.0, 0.0, 20.0, 20.0));
+        let subgraphs = vec![subgraph_layout("foreign", 40.0, 0.0, 40.0, 20.0)];
+        let original = vec![(20.0, 10.0), (20.0, -20.0), (100.0, -20.0), (100.0, 10.0)];
+        let mut routed_points = vec![original.clone()];
+
+        collapse_axis_aligned_flowchart_handoffs(&graph, &nodes, &subgraphs, &mut routed_points);
+
+        assert_eq!(
+            routed_points[0], original,
+            "a shorter direct handoff must not cut through an unrelated subgraph"
+        );
+    }
+
+    #[test]
+    fn non_endpoint_detour_repairs_diagonal_state_terminal_leg() {
+        let mut graph = Graph::new();
+        graph.edges = vec![edge("Published", "End")];
+        let mut nodes = BTreeMap::new();
+        nodes.insert(
+            "Published".to_string(),
+            node_layout("Published", 128.0, 326.0, 120.0, 47.0),
+        );
+        nodes.insert(
+            "Archived".to_string(),
+            node_layout("Archived", 133.0, 417.0, 111.0, 47.0),
+        );
+        nodes.insert(
+            "End".to_string(),
+            node_layout("End", 245.0, 440.0, 15.0, 15.0),
+        );
+        let mut routed_points = vec![vec![(220.0, 373.0), (220.0, 379.0), (250.0, 440.0)]];
+
+        assert!(flowchart_path_hits_non_endpoint_nodes(
+            &routed_points[0],
+            "Published",
+            "End",
+            &nodes,
+        ));
+        detour_flowchart_paths_around_non_endpoint_nodes(
+            &graph,
+            &nodes,
+            &mut routed_points,
+            &LayoutConfig::default(),
+        );
+        assert!(
+            !flowchart_path_hits_non_endpoint_nodes(&routed_points[0], "Published", "End", &nodes,),
+            "state terminal legs must route around sibling state boxes"
+        );
+    }
 
     #[test]
     fn collapse_axis_aligned_runs_removes_redundant_backtracking() {

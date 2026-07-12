@@ -717,6 +717,52 @@ struct MindmapNodeInfo {
     children: Vec<String>,
 }
 
+fn sanitize_mindmap_children(
+    root_id: Option<&str>,
+    info_map: &mut HashMap<String, MindmapNodeInfo>,
+) {
+    let valid_ids: HashSet<String> = info_map.keys().cloned().collect();
+    for info in info_map.values_mut() {
+        info.children.retain(|child| valid_ids.contains(child));
+    }
+
+    if let Some(root_id) = root_id {
+        let mut visiting = HashSet::new();
+        let mut visited = HashSet::new();
+        prune_mindmap_cycles(root_id, info_map, &mut visiting, &mut visited);
+    }
+}
+
+fn prune_mindmap_cycles(
+    node_id: &str,
+    info_map: &mut HashMap<String, MindmapNodeInfo>,
+    visiting: &mut HashSet<String>,
+    visited: &mut HashSet<String>,
+) {
+    if visited.contains(node_id) || !visiting.insert(node_id.to_string()) {
+        return;
+    }
+
+    let children = info_map
+        .get(node_id)
+        .map(|info| info.children.clone())
+        .unwrap_or_default();
+    let mut retained = Vec::with_capacity(children.len());
+    for child in children {
+        if visiting.contains(&child) {
+            continue;
+        }
+        prune_mindmap_cycles(&child, info_map, visiting, visited);
+        retained.push(child);
+    }
+    if let Some(info) = info_map.get_mut(node_id) {
+        info.children = retained;
+    }
+
+    visiting.remove(node_id);
+    visited.insert(node_id.to_string());
+}
+
 fn mindmap_palette(theme: &Theme, config: &LayoutConfig) -> MindmapPalette {
     let mindmap = &config.mindmap;
     let section_fills = if mindmap.section_colors.is_empty() {
@@ -1008,6 +1054,7 @@ pub(super) fn compute_mindmap_layout(
         .root_id
         .clone()
         .or_else(|| graph.mindmap.nodes.first().map(|node| node.id.clone()));
+    sanitize_mindmap_children(root_id.as_deref(), &mut info_map);
 
     let mut horizontal_gap = config.mindmap.rank_spacing * config.mindmap.rank_spacing_multiplier;
     let mut vertical_gap = config.mindmap.node_spacing * config.mindmap.node_spacing_multiplier;

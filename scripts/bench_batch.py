@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import shlex
 import subprocess
 import tempfile
 import time
@@ -38,30 +39,36 @@ def main() -> None:
     parser.add_argument("--warmup", type=int, default=1, help="Warmup runs")
     args = parser.parse_args()
 
+    if args.count < 1:
+        parser.error("--count must be at least 1")
+    if args.warmup < 0:
+        parser.error("--warmup cannot be negative")
+
     diagram = Path(args.diagram).read_text().strip()
     blocks = "\n\n".join([f"```mermaid\n{diagram}\n```" for _ in range(args.count)])
-    md_path = Path(tempfile.gettempdir()) / "mmdr-batch.md"
-    md_path.write_text(blocks)
 
-    out_dir = Path(tempfile.gettempdir()) / "mmdr-batch-out"
-    out_dir.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="mmdr-batch-") as temp_dir:
+        temp_path = Path(temp_dir)
+        md_path = temp_path / "batch.md"
+        md_path.write_text(blocks)
+        out_dir = temp_path / "out"
+        out_dir.mkdir()
 
-    mmdr_cmd = [args.mmdr, "-i", str(md_path), "-o", str(out_dir), "-e", "svg"]
+        mmdr_cmd = [args.mmdr, "-i", str(md_path), "-o", str(out_dir), "-e", "svg"]
+        mmdc_cmd_base = shlex.split(args.mmdc) + ["-i", str(Path(args.diagram))]
 
-    mmdc_cmd_base = args.mmdc.split() + ["-i", str(Path(args.diagram))]
+        for _ in range(args.warmup):
+            run(mmdr_cmd)
+            run(mmdc_cmd_base + ["-o", str(out_dir / "mmdc-warmup.svg")])
 
-    for _ in range(args.warmup):
+        t0 = time.perf_counter()
         run(mmdr_cmd)
-        run(mmdc_cmd_base + ["-o", str(out_dir / "mmdc-warmup.svg")])
+        mmdr_time = time.perf_counter() - t0
 
-    t0 = time.perf_counter()
-    run(mmdr_cmd)
-    mmdr_time = time.perf_counter() - t0
-
-    t1 = time.perf_counter()
-    for idx in range(args.count):
-        run(mmdc_cmd_base + ["-o", str(out_dir / f"mmdc-{idx}.svg")])
-    mmdc_time = time.perf_counter() - t1
+        t1 = time.perf_counter()
+        for idx in range(args.count):
+            run(mmdc_cmd_base + ["-o", str(out_dir / f"mmdc-{idx}.svg")])
+        mmdc_time = time.perf_counter() - t1
 
     mmdr_per = (mmdr_time / args.count) * 1000.0
     mmdc_per = (mmdc_time / args.count) * 1000.0

@@ -126,7 +126,7 @@ def bin_needs_rebuild(bin_path: Path):
 def build_release(bin_path: Path):
     if not bin_needs_rebuild(bin_path):
         return
-    cmd = ["cargo", "build", "--release"]
+    cmd = ["cargo", "build", "--locked", "--release"]
     res = run(cmd)
     if res.returncode != 0:
         raise RuntimeError(res.stderr.strip() or "cargo build failed")

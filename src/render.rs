@@ -1400,15 +1400,16 @@ pub fn render_svg_with_dimensions(
             if node.anchor_subgraph.is_some() {
                 continue;
             }
-            if let Some(link) = node.link.as_ref() {
-                svg.push_str(&format!("<a {}>", link_attrs(link)));
+            let link_attrs = node.link.as_ref().and_then(link_attrs);
+            if let (Some(link), Some(attrs)) = (node.link.as_ref(), link_attrs.as_deref()) {
+                svg.push_str(&format!("<a {attrs}>"));
                 if let Some(title) = link.title.as_deref() {
                     svg.push_str(&format!("<title>{}</title>", escape_xml(title)));
                 }
             }
             if layout.kind == crate::ir::DiagramKind::Er {
                 svg.push_str(&render_er_node(node, theme, config));
-                if node.link.is_some() {
+                if link_attrs.is_some() {
                     svg.push_str("</a>");
                 }
                 continue;
@@ -1488,14 +1489,15 @@ pub fn render_svg_with_dimensions(
                 };
                 svg.push_str(&label_svg);
             }
-            if node.link.is_some() {
+            if link_attrs.is_some() {
                 svg.push_str("</a>");
             }
         }
 
         for footbox in seq_data.map(|s| s.footboxes.as_slice()).unwrap_or_default() {
-            if let Some(link) = footbox.link.as_ref() {
-                svg.push_str(&format!("<a {}>", link_attrs(link)));
+            let link_attrs = footbox.link.as_ref().and_then(link_attrs);
+            if let (Some(link), Some(attrs)) = (footbox.link.as_ref(), link_attrs.as_deref()) {
+                svg.push_str(&format!("<a {attrs}>"));
                 if let Some(title) = link.title.as_deref() {
                     svg.push_str(&format!("<title>{}</title>", escape_xml(title)));
                 }
@@ -1533,7 +1535,7 @@ pub fn render_svg_with_dimensions(
                 };
                 svg.push_str(&label_svg);
             }
-            if footbox.link.is_some() {
+            if link_attrs.is_some() {
                 svg.push_str("</a>");
             }
         }
@@ -1545,8 +1547,9 @@ pub fn render_svg_with_dimensions(
             if node.anchor_subgraph.is_some() {
                 continue;
             }
-            if let Some(link) = node.link.as_ref() {
-                svg.push_str(&format!("<a {}>", link_attrs(link)));
+            let link_attrs = node.link.as_ref().and_then(link_attrs);
+            if let (Some(link), Some(attrs)) = (node.link.as_ref(), link_attrs.as_deref()) {
+                svg.push_str(&format!("<a {attrs}>"));
                 if let Some(title) = link.title.as_deref() {
                     svg.push_str(&format!("<title>{}</title>", escape_xml(title)));
                 }
@@ -1576,13 +1579,14 @@ pub fn render_svg_with_dimensions(
                     node.style.text_color.as_deref(),
                 ));
             }
-            if node.link.is_some() {
+            if link_attrs.is_some() {
                 svg.push_str("</a>");
             }
         }
         for footbox in seq_data.map(|s| s.footboxes.as_slice()).unwrap_or_default() {
-            if let Some(link) = footbox.link.as_ref() {
-                svg.push_str(&format!("<a {}>", link_attrs(link)));
+            let link_attrs = footbox.link.as_ref().and_then(link_attrs);
+            if let (Some(link), Some(attrs)) = (footbox.link.as_ref(), link_attrs.as_deref()) {
+                svg.push_str(&format!("<a {attrs}>"));
                 if let Some(title) = link.title.as_deref() {
                     svg.push_str(&format!("<title>{}</title>", escape_xml(title)));
                 }
@@ -1616,7 +1620,7 @@ pub fn render_svg_with_dimensions(
                     footbox.style.text_color.as_deref(),
                 ));
             }
-            if footbox.link.is_some() {
+            if link_attrs.is_some() {
                 svg.push_str("</a>");
             }
         }
@@ -5894,8 +5898,16 @@ fn render_er_node(
             cursor_x += badge_width + font_size * 0.4;
         }
 
+        // Narrow entities may not have enough room for a dedicated type column.
+        // Keep the type inline with the attribute name in that case instead of
+        // silently dropping source content from the rendered SVG.
+        let rendered_name = if show_type_col || attr.data_type.is_empty() {
+            attr.name.clone()
+        } else {
+            format!("{} {}", attr.data_type, attr.name)
+        };
         let name_label = TextBlock {
-            lines: vec![attr.name.clone()],
+            lines: vec![rendered_name],
             width: 0.0,
             height: 0.0,
         };
@@ -6017,8 +6029,30 @@ fn parse_hex_color(input: &str) -> Option<resvg::tiny_skia::Color> {
     Some(resvg::tiny_skia::Color::from_rgba8(r, g, b, a))
 }
 
-fn link_attrs(link: &crate::ir::NodeLink) -> String {
-    let url = escape_xml(&link.url);
+fn safe_link_url(url: &str) -> Option<&str> {
+    let url = url.trim();
+    if url.is_empty() || url.chars().any(|ch| ch.is_ascii_control()) {
+        return None;
+    }
+
+    // A colon before the first path/query/fragment delimiter denotes a URI
+    // scheme. Keep normal relative links, but allow only non-executable
+    // schemes when Mermaid input is rendered into an embeddable SVG.
+    let delimiter = url.find(['/', '?', '#']).unwrap_or(url.len());
+    if let Some(colon) = url.find(':').filter(|colon| *colon < delimiter) {
+        let scheme = &url[..colon];
+        if !matches!(
+            scheme.to_ascii_lowercase().as_str(),
+            "http" | "https" | "mailto" | "tel"
+        ) {
+            return None;
+        }
+    }
+    Some(url)
+}
+
+fn link_attrs(link: &crate::ir::NodeLink) -> Option<String> {
+    let url = escape_xml(safe_link_url(&link.url)?);
     let mut attrs = format!("href=\"{}\" xlink:href=\"{}\"", url, url);
     if let Some(target) = link.target.as_deref() {
         let target = escape_xml(target);
@@ -6027,7 +6061,7 @@ fn link_attrs(link: &crate::ir::NodeLink) -> String {
             attrs.push_str(" rel=\"noopener noreferrer\"");
         }
     }
-    attrs
+    Some(attrs)
 }
 
 fn edge_decoration_svg(
@@ -6493,6 +6527,28 @@ mod tests {
     use crate::ir::{Direction, Graph};
     use crate::layout::compute_layout;
 
+    #[test]
+    fn er_renderer_preserves_attribute_types_and_keys() {
+        let input = r#"erDiagram
+            CUSTOMER {
+                string id PK
+                date created_at
+            }
+        "#;
+        let theme = Theme::modern();
+        let config = LayoutConfig::default();
+        let parsed = crate::parser::parse_mermaid(input).expect("ER fixture parses");
+        let layout = compute_layout(&parsed.graph, &theme, &config);
+        let svg = render_svg(&layout, &theme, &config);
+
+        assert!(
+            svg.contains(">string<") || svg.contains(">string id<"),
+            "ER attribute data types must remain visible when the type column is constrained"
+        );
+        assert!(svg.contains(">date<") || svg.contains(">date created_at<"));
+        assert!(svg.contains(">PK<"), "ER key markers must remain visible");
+    }
+
     /// Bounding box of one rendered radar axis label, in absolute SVG coords.
     #[derive(Debug, Clone)]
     struct AxisLabelBox {
@@ -6754,6 +6810,51 @@ mod tests {
         assert!(svg.contains("id=\"edge-0\""));
         assert!(svg.contains("data-edge-id=\"edge-0\""));
         assert!(svg.contains("data-label-kind=\"center\""));
+    }
+
+    #[test]
+    fn unsafe_node_link_schemes_do_not_emit_svg_anchors() {
+        for url in [
+            "javascript:alert(document.domain)",
+            "JAVASCRIPT:alert(1)",
+            "data:text/html,<script>alert(1)</script>",
+            "vbscript:msgbox(1)",
+        ] {
+            let source =
+                format!("flowchart LR\n  A[Click me]\n  click A \"{url}\" \"tip\" _blank\n");
+            let parsed = crate::parser::parse_mermaid(&source).expect("flowchart parses");
+            let theme = Theme::modern();
+            let config = LayoutConfig::default();
+            let layout = compute_layout(&parsed.graph, &theme, &config);
+            let svg = render_svg(&layout, &theme, &config);
+
+            assert!(
+                svg.contains("Click me"),
+                "node should still render for {url}"
+            );
+            assert!(
+                !svg.contains("<a "),
+                "unsafe link should be omitted for {url}"
+            );
+            assert!(!svg.to_ascii_lowercase().contains("javascript:"));
+            assert!(!svg.to_ascii_lowercase().contains("data:text/html"));
+            assert!(!svg.to_ascii_lowercase().contains("vbscript:"));
+        }
+    }
+
+    #[test]
+    fn safe_node_links_remain_escaped_and_hardened() {
+        let parsed = crate::parser::parse_mermaid(
+            "flowchart LR\n  A[Docs]\n  click A \"https://example.com/a?x=1&y=2\" \"tip\" _blank\n",
+        )
+        .expect("flowchart parses");
+        let theme = Theme::modern();
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&parsed.graph, &theme, &config);
+        let svg = render_svg(&layout, &theme, &config);
+
+        assert!(svg.contains("href=\"https://example.com/a?x=1&amp;y=2\""));
+        assert!(svg.contains("target=\"_blank\" rel=\"noopener noreferrer\""));
     }
 
     #[test]

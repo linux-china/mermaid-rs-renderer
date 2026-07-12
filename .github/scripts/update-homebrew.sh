@@ -20,8 +20,14 @@ class Mmdr < Formula
   end
 
   on_linux do
-    url "https://github.com/1jehuang/mermaid-rs-renderer/releases/download/v${VERSION}/mmdr-x86_64-unknown-linux-gnu.tar.gz"
-    sha256 "${SHA_LINUX}"
+    on_intel do
+      url "https://github.com/1jehuang/mermaid-rs-renderer/releases/download/v${VERSION}/mmdr-x86_64-unknown-linux-gnu.tar.gz"
+      sha256 "${SHA_LINUX_INTEL}"
+    end
+    on_arm do
+      url "https://github.com/1jehuang/mermaid-rs-renderer/releases/download/v${VERSION}/mmdr-aarch64-unknown-linux-gnu.tar.gz"
+      sha256 "${SHA_LINUX_ARM}"
+    end
   end
 
   def install

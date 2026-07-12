@@ -6,13 +6,15 @@ on:
       - "v*.*.*"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verify-tag-version:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - name: Ensure tag matches Cargo.toml version
         run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
@@ -21,9 +23,40 @@ jobs:
             echo "Tag version ($TAG_VERSION) does not match Cargo.toml version ($CARGO_VERSION)"
             exit 1
           fi
+      - name: Ensure tagged commit is on master
+        run: |
+          git fetch --no-tags origin master
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
+            echo "Tagged commit $GITHUB_SHA is not reachable from origin/master"
+            exit 1
+          fi
+
+  verify-release:
+    needs: verify-tag-version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - run: python3 scripts/check_repo.py
+      - run: cargo fmt -- --check
+      - run: cargo clippy --all-targets --all-features -- -D warnings
+      - run: cargo test --locked --all-features --lib --bins --tests --examples
+      - run: cargo test --locked --no-default-features --lib
+      - run: cargo test --locked --doc --all-features
+      - run: cargo build --locked --release --features cli
+      - run: python3 scripts/hard_gate.py
+      - run: cargo publish --dry-run --locked
 
   build:
-    needs: verify-tag-version
+    needs: verify-release
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -54,7 +87,7 @@ jobs:
           targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
       - name: Build
-        run: cargo build --release --target ${{ matrix.target }}
+        run: cargo build --locked --release --target ${{ matrix.target }}
       - name: Verify binary version (unix)
         if: runner.os != 'Windows'
         run: |
@@ -101,12 +134,22 @@ jobs:
         name: Check if this version is already on crates.io
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          if curl -fsS "https://crates.io/api/v1/crates/mermaid-rs-renderer/$VERSION" > /dev/null; then
-            echo "already_published=true" >> "$GITHUB_OUTPUT"
-            echo "mermaid-rs-renderer $VERSION is already published on crates.io; skipping publish."
-          else
-            echo "already_published=false" >> "$GITHUB_OUTPUT"
-          fi
+          status="$(curl --retry 3 --retry-all-errors -sS -o crate-response.json -w '%{http_code}' \
+            "https://crates.io/api/v1/crates/mermaid-rs-renderer/$VERSION")"
+          case "$status" in
+            200)
+              echo "already_published=true" >> "$GITHUB_OUTPUT"
+              echo "mermaid-rs-renderer $VERSION is already published on crates.io; skipping publish."
+              ;;
+            404)
+              echo "already_published=false" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Unexpected crates.io response: HTTP $status" >&2
+              cat crate-response.json >&2
+              exit 1
+              ;;
+          esac
       - name: Publish to crates.io
         if: steps.check-published.outputs.already_published != 'true'
         env:
@@ -124,11 +167,13 @@ jobs:
           BASE="https://github.com/1jehuang/mermaid-rs-renderer/releases/download/${GITHUB_REF_NAME}"
           curl -fsSL "${BASE}/mmdr-x86_64-apple-darwin.tar.gz" -o macos-intel.tar.gz
           curl -fsSL "${BASE}/mmdr-aarch64-apple-darwin.tar.gz" -o macos-arm.tar.gz
-          curl -fsSL "${BASE}/mmdr-x86_64-unknown-linux-gnu.tar.gz" -o linux.tar.gz
+          curl -fsSL "${BASE}/mmdr-x86_64-unknown-linux-gnu.tar.gz" -o linux-intel.tar.gz
+          curl -fsSL "${BASE}/mmdr-aarch64-unknown-linux-gnu.tar.gz" -o linux-arm.tar.gz
           {
             echo "SHA_MACOS_INTEL=$(sha256sum macos-intel.tar.gz | cut -d' ' -f1)"
             echo "SHA_MACOS_ARM=$(sha256sum macos-arm.tar.gz | cut -d' ' -f1)"
-            echo "SHA_LINUX=$(sha256sum linux.tar.gz | cut -d' ' -f1)"
+            echo "SHA_LINUX_INTEL=$(sha256sum linux-intel.tar.gz | cut -d' ' -f1)"
+            echo "SHA_LINUX_ARM=$(sha256sum linux-arm.tar.gz | cut -d' ' -f1)"
             echo "VERSION=${VERSION}"
           } >> "$GITHUB_ENV"
       - uses: actions/checkout@v6

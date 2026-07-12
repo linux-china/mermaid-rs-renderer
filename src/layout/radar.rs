@@ -220,14 +220,8 @@ pub(super) fn compute_radar_layout(graph: &Graph, theme: &Theme, config: &Layout
         }
         let angle = axis_angle(idx, resolved.axes.len());
         let (lx, ly, anchor) = axis_label_position(angle);
-        let block = measure_label_with_font_size(
-            axis,
-            AXIS_LABEL_FONT_SIZE,
-            config,
-            false,
-            theme.font_family.as_str(),
-        );
-        let (x0, x1) = axis_label_x_extent(lx, anchor, block.width);
+        let label_width = axis_label_width(axis, theme, config);
+        let (x0, x1) = axis_label_x_extent(lx, anchor, label_width);
         let half_h = AXIS_LABEL_FONT_SIZE / 2.0;
         left = left.max(-x0 + CANVAS_MARGIN);
         right = right.max(x1 + CANVAS_MARGIN);

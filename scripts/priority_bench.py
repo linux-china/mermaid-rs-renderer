@@ -189,7 +189,7 @@ def build_release(bin_path: Path) -> None:
             should_build = False
     if not should_build:
         return
-    res = run(["cargo", "build", "--release"])
+    res = run(["cargo", "build", "--locked", "--release"])
     if res.returncode != 0:
         raise RuntimeError(res.stderr.strip() or "cargo build failed")
 

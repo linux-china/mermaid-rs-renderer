@@ -356,7 +356,8 @@ fn resolve_multi_outputs(
         OutputFormat::Png => "png",
     };
     let base = output.ok_or_else(|| anyhow::anyhow!("Output path required for markdown input"))?;
-    if base.is_dir() {
+    if is_directory_output_path(base) {
+        std::fs::create_dir_all(base)?;
         let mut outputs = Vec::new();
         for idx in 0..count {
             outputs.push(base.join(format!("diagram-{}.{}", idx + 1, ext)));
@@ -377,7 +378,8 @@ fn resolve_multi_outputs(
 
 fn resolve_layout_outputs(output: Option<&Path>, count: usize) -> Result<Vec<PathBuf>> {
     let base = output.ok_or_else(|| anyhow::anyhow!("Dump layout path required"))?;
-    if base.is_dir() {
+    if is_directory_output_path(base) {
+        std::fs::create_dir_all(base)?;
         let mut outputs = Vec::new();
         for idx in 0..count {
             outputs.push(base.join(format!("diagram-{}.layout.json", idx + 1)));
@@ -397,6 +399,14 @@ fn resolve_layout_outputs(output: Option<&Path>, count: usize) -> Result<Vec<Pat
         outputs.push(parent.join(format!("{}-{}.layout.json", stem, idx + 1)));
     }
     Ok(outputs)
+}
+
+fn is_directory_output_path(path: &Path) -> bool {
+    if path.is_dir() {
+        return true;
+    }
+    let raw = path.as_os_str().to_string_lossy();
+    raw.ends_with('/') || raw.ends_with('\\')
 }
 
 #[cfg(test)]

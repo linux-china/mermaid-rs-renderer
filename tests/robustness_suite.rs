@@ -2,8 +2,8 @@ use std::panic::{self, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
 
 use mermaid_rs_renderer::ir::{
-    BlockDiagram, BlockNode, EdgeStyleOverride, NodeStyle, PieSlice, QuadrantPoint, XYSeries,
-    XYSeriesKind,
+    BlockDiagram, BlockNode, EdgeStyleOverride, MindmapNode, MindmapNodeType, NodeStyle, PieSlice,
+    QuadrantPoint, XYSeries, XYSeriesKind,
 };
 use mermaid_rs_renderer::layout::validate_layout_invariants;
 use mermaid_rs_renderer::{
@@ -128,6 +128,59 @@ fn malformed_block_columns_zero_does_not_panic() {
     validate_layout_invariants(&layout).expect("block layout should stay well formed");
     let svg = render_svg(&layout, &theme, &config);
     assert!(!has_non_finite_numeric_attribute(&svg));
+}
+
+#[test]
+fn cyclic_public_mindmap_ir_does_not_recurse_forever() {
+    let mut graph = Graph::new();
+    graph.kind = DiagramKind::Mindmap;
+    graph.mindmap.root_id = Some("root".to_string());
+    graph.mindmap.nodes = vec![
+        MindmapNode {
+            id: "root".to_string(),
+            label: "Root".to_string(),
+            level: 0,
+            section: None,
+            node_type: MindmapNodeType::Default,
+            icon: None,
+            class: None,
+            children: vec!["child".to_string()],
+        },
+        MindmapNode {
+            id: "child".to_string(),
+            label: "Child".to_string(),
+            level: 1,
+            section: Some(0),
+            node_type: MindmapNodeType::Default,
+            icon: None,
+            class: None,
+            children: vec!["root".to_string()],
+        },
+    ];
+    graph.ensure_node(
+        "root",
+        Some("Root".to_string()),
+        Some(NodeShape::MindmapDefault),
+    );
+    graph.ensure_node(
+        "child",
+        Some("Child".to_string()),
+        Some(NodeShape::MindmapDefault),
+    );
+    graph.edges.push(edge("root", "child"));
+    graph.edges.push(edge("child", "root"));
+
+    let theme = Theme::modern();
+    let config = LayoutConfig::default();
+    let result = panic::catch_unwind(AssertUnwindSafe(|| {
+        let layout = compute_layout(&graph, &theme, &config);
+        validate_layout_invariants(&layout).expect("mindmap layout should stay well formed");
+        let svg = render_svg(&layout, &theme, &config);
+        assert!(svg.contains("Root"));
+        assert!(svg.contains("Child"));
+        assert!(!has_non_finite_numeric_attribute(&svg));
+    }));
+    assert!(result.is_ok(), "cyclic mindmap public IR must not panic");
 }
 
 #[test]

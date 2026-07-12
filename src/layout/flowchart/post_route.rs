@@ -44,6 +44,12 @@ pub(in crate::layout) fn apply_edge_path_cleanup(
         // axis, which turns visually straight connectors into two-bend doglegs.
         // Collapse those near-axis-aligned paths the same way flowcharts do.
         simplify_flowchart_axis_oscillations(routed_points);
+        if graph.kind == DiagramKind::State {
+            // State choice/end-marker routes can contain diagonal terminal legs.
+            // Crossing reduction and simplification must not leave those legs
+            // cutting through a sibling state box.
+            detour_flowchart_paths_around_non_endpoint_nodes(graph, nodes, routed_points, config);
+        }
     }
 }
 

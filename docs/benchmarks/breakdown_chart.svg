@@ -9,21 +9,12 @@
   .bar-render { fill: #FF9800; }
 </style>
 <text x="300.0" y="25" text-anchor="middle" class="title">mmdr Pipeline Breakdown</text>
-<rect x="100" y="49.0" width="15.404366088859964" height="42.0" class="bar-parse"/>
-<rect x="115.40436608885996" y="49.0" width="453.3073024512414" height="42.0" class="bar-layout"/>
-<text x="342.05801731448065" y="74.0" text-anchor="middle" fill="white" font-size="9">48.91</text>
-<rect x="568.7116685401014" y="49.0" width="1.2883314598986373" height="42.0" class="bar-render"/>
-<text x="95" y="74.0" text-anchor="end" class="tick-label">flowchart subgraph boundary intrusion</text>
-<rect x="100" y="109.0" width="15.339486087282335" height="42.0" class="bar-parse"/>
-<rect x="115.33948608728234" y="109.0" width="95.72580804196492" height="42.0" class="bar-layout"/>
-<text x="163.2023901082648" y="134.0" text-anchor="middle" fill="white" font-size="9">10.33</text>
-<rect x="211.06529412924726" y="109.0" width="1.0473485968960143" height="42.0" class="bar-render"/>
-<text x="95" y="134.0" text-anchor="end" class="tick-label">flowchart parallel edges bundle</text>
-<rect x="100" y="169.0" width="16.75757755033623" height="42.0" class="bar-parse"/>
-<rect x="116.75757755033624" y="169.0" width="130.9185746120018" height="42.0" class="bar-layout"/>
-<text x="182.21686485633714" y="194.0" text-anchor="middle" fill="white" font-size="9">14.12</text>
-<rect x="247.67615216233804" y="169.0" width="1.4366286063617897" height="42.0" class="bar-render"/>
-<text x="95" y="194.0" text-anchor="end" class="tick-label">flowchart flow direction backtrack</text>
+<rect x="100" y="67.0" width="359.6605316973416" height="125.99999999999999" class="bar-parse"/>
+<text x="279.8302658486708" y="134.0" text-anchor="middle" fill="white" font-size="9">1.87</text>
+<rect x="459.6605316973416" y="67.0" width="99.38241308793457" height="125.99999999999999" class="bar-layout"/>
+<text x="509.35173824130885" y="134.0" text-anchor="middle" fill="white" font-size="9">0.52</text>
+<rect x="559.0429447852762" y="67.0" width="10.957055214723926" height="125.99999999999999" class="bar-render"/>
+<text x="95" y="134.0" text-anchor="end" class="tick-label">flowchart tiny</text>
 <rect x="100" y="270" width="12" height="12" class="bar-parse"/>
 <text x="117" y="280" class="legend">Parse</text>
 <rect x="180" y="270" width="12" height="12" class="bar-layout"/>

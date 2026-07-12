@@ -98,7 +98,7 @@ Performance on larger diagrams:
 | flowchart (medium) | 50 | 8.71 ms | 2,018 ms | 232x |
 | flowchart (large) | 200 | 47.00 ms | 2,276 ms | 48x |
 
-The speedup advantage decreases for very large diagrams as actual layout computation becomes more significant relative to browser startup overhead. Still, mmdr remains **100x+ faster** even for 200-node diagrams.
+The speedup advantage decreases for very large diagrams as actual layout computation becomes more significant relative to browser startup overhead. The 200-node case above is still **48x faster** in this measurement.
 
 </details>
 
@@ -378,7 +378,7 @@ Use mmdr as a Rust library in your project:
 
 ```toml
 [dependencies]
-mermaid-rs-renderer = "0.2.2"
+mermaid-rs-renderer = "0.3.1"
 ```
 
 <details>
@@ -388,7 +388,7 @@ For tools like Zola that only need SVG rendering, disable default features to av
 
 ```toml
 [dependencies]
-mermaid-rs-renderer = { version = "0.2.2", default-features = false }
+mermaid-rs-renderer = { version = "0.3.1", default-features = false }
 ```
 
 | Feature | Default | Description |
@@ -469,7 +469,7 @@ println!("  Render: {}us", result.render_us);
 
 ```bash
 cargo test
-cargo run -- -i docs/diagrams/architecture.mmd -o /tmp/out.svg -e svg
+cargo run -- -i docs/diagrams/architecture.mmd -o target/out.svg -e svg
 ```
 
 **Remote build/test over SSH (optional):**
@@ -490,7 +490,8 @@ touch your normal remote working copy unless you set `MMDR_REMOTE_DIR` to that p
 **Benchmarks:**
 ```bash
 cargo bench --features benchmark --bench renderer  # Microbenchmarks
-cargo build --release && python scripts/bench_compare.py  # vs mermaid-cli
+cargo build --locked --release && python3 scripts/bench_compare.py  # full suite vs mermaid-cli
+python3 scripts/bench_render.py --help  # focused end-to-end PNG benchmark options
 ```
 
 For a faster optimized development build, use `cargo build --profile release-fast`.

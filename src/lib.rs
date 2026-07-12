@@ -85,7 +85,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! mermaid-rs-renderer = { version = "0.2.2", default-features = false }
+//! mermaid-rs-renderer = { version = "0.3.1", default-features = false }
 //! ```
 
 #[cfg(feature = "cli")]

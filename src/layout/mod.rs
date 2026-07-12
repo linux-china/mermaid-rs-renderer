@@ -1862,7 +1862,7 @@ flowchart RL
 
     #[test]
     fn cycle_fixture_keeps_forward_backbone_edges_reasonably_simple() {
-        let source = include_str!("../../docs/comparison_sources/flowchart_cycles.mmd");
+        let source = include_str!("../../tests/fixtures/layout_regressions/flowchart_cycles.mmd");
         let parsed = parse_mermaid(source).expect("failed to parse flowchart fixture");
         let layout = compute_layout(&parsed.graph, &Theme::modern(), &LayoutConfig::default());
 
@@ -1883,7 +1883,7 @@ flowchart RL
 
     #[test]
     fn cycle_fixture_back_edge_uses_outer_side_ports() {
-        let source = include_str!("../../docs/comparison_sources/flowchart_cycles.mmd");
+        let source = include_str!("../../tests/fixtures/layout_regressions/flowchart_cycles.mmd");
         let parsed = parse_mermaid(source).expect("failed to parse flowchart fixture");
         let layout = compute_layout(&parsed.graph, &Theme::modern(), &LayoutConfig::default());
 
@@ -1916,7 +1916,7 @@ flowchart RL
 
     #[test]
     fn cycle_fixture_backbone_edges_collapse_to_straight_segments() {
-        let source = include_str!("../../docs/comparison_sources/flowchart_cycles.mmd");
+        let source = include_str!("../../tests/fixtures/layout_regressions/flowchart_cycles.mmd");
         let parsed = parse_mermaid(source).expect("failed to parse flowchart fixture");
         let layout = compute_layout(&parsed.graph, &Theme::modern(), &LayoutConfig::default());
 
@@ -1937,7 +1937,7 @@ flowchart RL
 
     #[test]
     fn cycle_fixture_subgraph_has_room_for_title_and_return_lane() {
-        let source = include_str!("../../docs/comparison_sources/flowchart_cycles.mmd");
+        let source = include_str!("../../tests/fixtures/layout_regressions/flowchart_cycles.mmd");
         let parsed = parse_mermaid(source).expect("failed to parse flowchart fixture");
         let layout = compute_layout(&parsed.graph, &Theme::modern(), &LayoutConfig::default());
 
@@ -1977,7 +1977,7 @@ flowchart RL
 
     #[test]
     fn cycle_fixture_subgraph_entry_aligns_with_spine() {
-        let source = include_str!("../../docs/comparison_sources/flowchart_cycles.mmd");
+        let source = include_str!("../../tests/fixtures/layout_regressions/flowchart_cycles.mmd");
         let parsed = parse_mermaid(source).expect("failed to parse flowchart fixture");
         let layout = compute_layout(&parsed.graph, &Theme::modern(), &LayoutConfig::default());
 
@@ -2026,7 +2026,7 @@ flowchart RL
 
     #[test]
     fn opaque_flowchart_challenge_edge_has_no_axis_oscillation() {
-        let source = include_str!("../../docs/comparison_sources/flowchart_opaque.mmd");
+        let source = include_str!("../../tests/fixtures/layout_regressions/flowchart_opaque.mmd");
         let parsed = parse_mermaid(source).expect("failed to parse opaque flowchart fixture");
         let layout = compute_layout(&parsed.graph, &Theme::modern(), &LayoutConfig::default());
 
@@ -2085,7 +2085,8 @@ flowchart LR
 
     #[test]
     fn flowchart_subgraph_direction_fixture_keeps_lr_members_horizontal() {
-        let source = include_str!("../../docs/comparison_sources/flowchart_subgraph_dir.mmd");
+        let source =
+            include_str!("../../tests/fixtures/layout_regressions/flowchart_subgraph_dir.mmd");
         let parsed = parse_mermaid(source).expect("failed to parse flowchart fixture");
         let layout = compute_layout(&parsed.graph, &Theme::modern(), &LayoutConfig::default());
 
@@ -2105,7 +2106,7 @@ flowchart LR
 
     #[test]
     fn dense_flowchart_avoids_crossing_between_middle_and_far_edges() {
-        let source = include_str!("../../docs/comparison_sources/flowchart_dense.mmd");
+        let source = include_str!("../../tests/fixtures/layout_regressions/flowchart_dense.mmd");
         let parsed = parse_mermaid(source).expect("failed to parse flowchart fixture");
         let layout = compute_layout(&parsed.graph, &Theme::modern(), &LayoutConfig::default());
 
@@ -2132,7 +2133,7 @@ flowchart LR
 
     #[test]
     fn dense_flowchart_keeps_mid_span_edge_reasonably_direct() {
-        let source = include_str!("../../docs/comparison_sources/flowchart_dense.mmd");
+        let source = include_str!("../../tests/fixtures/layout_regressions/flowchart_dense.mmd");
         let parsed = parse_mermaid(source).expect("failed to parse flowchart fixture");
         let layout = compute_layout(&parsed.graph, &Theme::modern(), &LayoutConfig::default());
 
@@ -2169,7 +2170,7 @@ flowchart LR
         // ~2.4x detour around the whole graph just to avoid two crossings.
         // Fast metrics make this reproducible on any host regardless of the
         // installed fonts.
-        let source = include_str!("../../docs/comparison_sources/flowchart_dense.mmd");
+        let source = include_str!("../../tests/fixtures/layout_regressions/flowchart_dense.mmd");
         let parsed = parse_mermaid(source).expect("failed to parse flowchart fixture");
         let config = LayoutConfig {
             fast_text_metrics: true,
@@ -2210,7 +2211,7 @@ flowchart LR
         // label box in this fixture. The invariant suite covers the default
         // (host-font) metrics; this variant pins the same guarantee with the
         // font-independent fallback metrics so it reproduces on any host.
-        let source = include_str!("../../docs/comparison_sources/flowchart_opaque.mmd");
+        let source = include_str!("../../tests/fixtures/layout_regressions/flowchart_opaque.mmd");
         let parsed = parse_mermaid(source).expect("failed to parse flowchart fixture");
         let config = LayoutConfig {
             fast_text_metrics: true,
@@ -2223,7 +2224,7 @@ flowchart LR
 
     #[test]
     fn opaque_flowchart_routes_around_large_label_boxes() {
-        let source = include_str!("../../docs/comparison_sources/flowchart_opaque.mmd");
+        let source = include_str!("../../tests/fixtures/layout_regressions/flowchart_opaque.mmd");
         let parsed = parse_mermaid(source).expect("failed to parse flowchart fixture");
         let layout = compute_layout(&parsed.graph, &Theme::modern(), &LayoutConfig::default());
 
@@ -2373,7 +2374,7 @@ flowchart LR
 
     #[test]
     fn er_labels_stay_attached_after_path_postprocess() {
-        let source = include_str!("../../docs/comparison_sources/er_blog.mmd");
+        let source = include_str!("../../tests/fixtures/layout_regressions/er_blog.mmd");
         let parsed = parse_mermaid(source).expect("failed to parse ER fixture");
         let layout = compute_layout(&parsed.graph, &Theme::modern(), &LayoutConfig::default());
 

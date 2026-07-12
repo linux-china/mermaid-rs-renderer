@@ -2925,9 +2925,9 @@ fn apply_pie_config_file(target: &mut PieConfig, pie: PieConfigFile) {
 /// directives over site config. Values in the init directive win over the
 /// base config.
 ///
-/// The CLI and the high-level library entry points ([`crate::render`],
-/// [`crate::render_with_options`], [`crate::render_strict`],
-/// [`crate::measure`]) apply this automatically. Callers driving the
+/// The CLI and the high-level library entry points ([`crate::render()`],
+/// [`crate::render_with_options()`], [`crate::render_strict()`],
+/// [`crate::measure()`]) apply this automatically. Callers driving the
 /// pipeline manually (`parse_mermaid` + `compute_layout` + `render_svg`)
 /// can use this with [`crate::parser::ParseOutput::init_config`] to get the
 /// same behavior.

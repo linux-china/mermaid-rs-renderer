@@ -377,6 +377,7 @@ fn endpoint_repair_score(
     points: &[(f32, f32)],
     edge: &crate::ir::Edge,
     nodes: &BTreeMap<String, NodeLayout>,
+    subgraphs: &[SubgraphLayout],
     other_segments: &[Segment],
 ) -> EndpointRepairScore {
     let endpoint_direction_violations =
@@ -384,12 +385,15 @@ fn endpoint_repair_score(
     let non_endpoint_hits = usize::from(path_cleanup::flowchart_path_hits_non_endpoint_nodes(
         points, &edge.from, &edge.to, nodes,
     ));
+    let foreign_subgraph_hits = path_cleanup::flowchart_path_foreign_subgraph_hit_count(
+        points, &edge.from, &edge.to, subgraphs,
+    );
     let debt = path_cleanup::flowchart_endpoint_reentry_count(points, edge, nodes);
     let (crossings, overlap) = edge_crossings_with_existing(points, other_segments);
     let bends = path_bend_count(points);
     let len = path_length(points);
     EndpointRepairScore {
-        hard: endpoint_direction_violations + non_endpoint_hits,
+        hard: endpoint_direction_violations + non_endpoint_hits + foreign_subgraph_hits,
         endpoint_reentries: debt,
         crossings,
         overlap,
@@ -445,8 +449,13 @@ fn repair_flowchart_endpoint_reentries_by_rerouting(
             continue;
         }
         let other_segments = collect_other_flowchart_segments(routed_points, idx);
-        let baseline_score =
-            endpoint_repair_score(&routed_points[idx], edge, ctx.nodes, &other_segments);
+        let baseline_score = endpoint_repair_score(
+            &routed_points[idx],
+            edge,
+            ctx.nodes,
+            ctx.subgraphs,
+            &other_segments,
+        );
         if baseline_score.hard == 0 && baseline_score.endpoint_reentries == 0 {
             continue;
         }
@@ -525,7 +534,13 @@ fn repair_flowchart_endpoint_reentries_by_rerouting(
                     ctx.routing_grid,
                     Some(other_segments.as_slice()),
                 );
-                let score = endpoint_repair_score(&candidate, edge, ctx.nodes, &other_segments);
+                let score = endpoint_repair_score(
+                    &candidate,
+                    edge,
+                    ctx.nodes,
+                    ctx.subgraphs,
+                    &other_segments,
+                );
                 if !endpoint_score_repairs_baseline(score, baseline_score) {
                     continue;
                 }
@@ -2914,7 +2929,44 @@ pub(in crate::layout) fn build_routed_edges(ctx: RoutedEdgeBuildContext<'_>) -> 
             &mut edge_ports,
             &mut routed_points,
         );
+        // Collapse simple same-axis handoffs before the final geometry passes.
+        // The collapse can expose a crossing that the original detoured route
+        // avoided, while crossing repair can introduce a short endpoint
+        // reentry. Keep both operations inside the final repair envelope.
+        path_cleanup::collapse_axis_aligned_flowchart_handoffs(
+            graph,
+            nodes,
+            subgraphs,
+            &mut routed_points,
+        );
         path_cleanup::repair_flowchart_endpoint_reentries(graph, nodes, &mut routed_points, config);
+        path_cleanup::reduce_orthogonal_path_crossings(graph, nodes, &mut routed_points, config);
+        path_cleanup::repair_flowchart_endpoint_reentries(graph, nodes, &mut routed_points, config);
+        path_cleanup::repair_flowchart_orthogonal_crossings(
+            graph,
+            nodes,
+            subgraphs,
+            &mut routed_points,
+            config,
+        );
+        path_cleanup::simplify_flowchart_axis_oscillations(&mut routed_points);
+        enforce_flowchart_endpoint_ports(graph, nodes, &edge_ports, &mut routed_points, config);
+        path_cleanup::repair_flowchart_endpoint_reentries(graph, nodes, &mut routed_points, config);
+        repair_flowchart_endpoint_reentries_by_rerouting(
+            EndpointRerouteRepairContext {
+                graph,
+                nodes,
+                subgraphs,
+                obstacles: &obstacles,
+                label_obstacles: &route_label_obstacles,
+                routing_grid: routing_grid.as_ref(),
+                lane_offsets: &lane_offsets,
+                reserved_channels: &reserved_channels,
+                config,
+            },
+            &mut edge_ports,
+            &mut routed_points,
+        );
     }
     #[cfg(debug_assertions)]
     if graph.kind == DiagramKind::Flowchart {

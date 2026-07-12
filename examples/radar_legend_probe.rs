@@ -132,8 +132,7 @@ fn parse_curves(svg: &str) -> Vec<Vec<(f32, f32)>> {
         .filter_map(|t| attr(t, "d"))
         .map(|d| {
             d.trim_end_matches(" Z")
-                .replace('M', "")
-                .replace('L', "")
+                .replace(['M', 'L'], "")
                 .split_whitespace()
                 .map(|p| {
                     let mut it = p.split(',');
