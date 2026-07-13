@@ -25,7 +25,26 @@ pub(super) fn compute_xychart_layout(
     let data = &graph.xychart;
     let padding = 40.0;
     let y_axis_width = 60.0;
-    let x_axis_height = 40.0;
+    let category_blocks: Vec<_> = data
+        .x_axis_categories
+        .iter()
+        .map(|category| measure_label(category, theme, config))
+        .collect();
+    let x_axis_label = data
+        .x_axis_label
+        .as_ref()
+        .map(|label| measure_label(label, theme, config));
+    let category_height = category_blocks
+        .iter()
+        .map(|block| block.height)
+        .fold(0.0_f32, f32::max);
+    let x_axis_height = (category_height
+        + 16.0
+        + x_axis_label
+            .as_ref()
+            .map(|label| label.height + 10.0)
+            .unwrap_or(0.0))
+    .max(40.0);
     let title = data.title.as_ref().map(|t| measure_label(t, theme, config));
     // Size the title band from the measured (possibly wrapped) title so long
     // titles do not overlap the plot area.
@@ -34,7 +53,11 @@ pub(super) fn compute_xychart_layout(
         .map(|t| (t.height + 12.0).max(30.0))
         .unwrap_or(0.0);
 
-    let plot_width = 400.0;
+    let measured_category_width = category_blocks
+        .windows(2)
+        .map(|pair| pair[0].width / 2.0 + pair[1].width / 2.0 + 12.0)
+        .fold(0.0_f32, f32::max);
+    let plot_width = 400.0_f32.max(measured_category_width * category_blocks.len().max(1) as f32);
     let plot_height = 250.0;
 
     let width = padding * 2.0 + y_axis_width + plot_width;
@@ -181,10 +204,6 @@ pub(super) fn compute_xychart_layout(
         })
         .collect();
 
-    let x_axis_label = data
-        .x_axis_label
-        .as_ref()
-        .map(|l| measure_label(l, theme, config));
     let y_axis_label = data
         .y_axis_label
         .as_ref()

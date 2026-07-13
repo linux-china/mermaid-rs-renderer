@@ -73,7 +73,7 @@ pub(super) fn compute_journey_layout(
     }
 
     let mut tasks_data: Vec<TaskData> = Vec::new();
-    let mut section_ranges: Vec<(usize, usize)> = Vec::new();
+    let mut section_ranges: Vec<Option<(usize, usize)>> = Vec::new();
     let mut order_idx = 0usize;
     for (section_idx, (_label, nodes)) in section_defs.iter().enumerate() {
         let start_idx = order_idx;
@@ -97,8 +97,11 @@ pub(super) fn compute_journey_layout(
                 order_idx += 1;
             }
         }
-        let end_idx = order_idx.saturating_sub(1);
-        section_ranges.push((start_idx, end_idx));
+        section_ranges.push(if start_idx < order_idx {
+            Some((start_idx, order_idx - 1))
+        } else {
+            None
+        });
     }
 
     let mut actor_order: Vec<String> = Vec::new();
@@ -148,6 +151,7 @@ pub(super) fn compute_journey_layout(
 
     let mut actors = Vec::new();
     let mut actor_label_y = 0.0;
+    let mut actor_legend_right = 0.0f32;
     if !actor_order.is_empty() {
         let mut x = margin_x;
         let legend_y = cursor_y + actor_radius;
@@ -162,6 +166,8 @@ pub(super) fn compute_journey_layout(
                 y: legend_y,
                 radius: actor_radius,
             });
+            actor_legend_right =
+                actor_legend_right.max(x + actor_radius * 2.0 + actor_gap + label.width);
             x += actor_radius * 2.0 + actor_gap + label.width + theme.font_size * 0.8;
         }
         cursor_y += actor_radius * 2.0 + theme.font_size * 0.8;
@@ -229,10 +235,9 @@ pub(super) fn compute_journey_layout(
     let mut sections = Vec::new();
     let section_pad_x = theme.font_size * 0.6;
     for (section_idx, (label, _nodes)) in section_defs.iter().enumerate() {
-        let (start_idx, end_idx) = section_ranges.get(section_idx).copied().unwrap_or((0, 0));
-        if start_idx > end_idx || total_tasks == 0 {
+        let Some((start_idx, end_idx)) = section_ranges.get(section_idx).copied().flatten() else {
             continue;
-        }
+        };
         let row_top = content_y + section_idx as f32 * (row_height + section_gap_y);
         let x = content_x + start_idx as f32 * (task_width + task_gap_x) - section_pad_x;
         let span = end_idx.saturating_sub(start_idx) + 1;
@@ -264,7 +269,9 @@ pub(super) fn compute_journey_layout(
         None
     };
 
-    let width = (content_x + task_area_width + margin_x).max(1.0);
+    let width = (content_x + task_area_width + margin_x)
+        .max(actor_legend_right + 1.0)
+        .max(1.0);
     let height = baseline
         .map(|(_, y, _)| y + theme.font_size * 1.6)
         .unwrap_or(content_y + theme.font_size * 4.0)
@@ -315,5 +322,56 @@ pub(super) fn compute_journey_layout(
         }),
         width,
         height,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn journey_layout(input: &str) -> Layout {
+        let parsed = crate::parser::parse_mermaid(input).expect("journey should parse");
+        compute_journey_layout(
+            &parsed.graph,
+            &Theme::mermaid_default(),
+            &LayoutConfig::default(),
+        )
+    }
+
+    #[test]
+    fn long_actor_legend_contributes_to_canvas_width() {
+        let layout = journey_layout(
+            "journey\n  section Start\n    Task: 5: An exceptionally long actor legend label\n",
+        );
+        let DiagramData::Journey(journey) = &layout.diagram else {
+            panic!("expected journey layout");
+        };
+        let actor = journey.actors.first().expect("actor legend");
+        let label = measure_label(
+            &actor.name,
+            &Theme::mermaid_default(),
+            &LayoutConfig::default(),
+        );
+        let label_right = actor.x + actor.radius + journey.actor_gap + label.width;
+
+        assert!(
+            label_right < layout.width,
+            "actor label right edge {label_right} must be inside canvas width {}",
+            layout.width
+        );
+    }
+
+    #[test]
+    fn empty_section_does_not_receive_following_section_task() {
+        let layout =
+            journey_layout("journey\n  section Empty\n  section Populated\n    Task: 5: Alice\n");
+        let DiagramData::Journey(journey) = &layout.diagram else {
+            panic!("expected journey layout");
+        };
+
+        assert_eq!(journey.sections.len(), 1);
+        assert_eq!(journey.sections[0].label.lines, ["Populated"]);
+        assert_eq!(journey.tasks.len(), 1);
+        assert_eq!(journey.tasks[0].section_idx, 1);
     }
 }

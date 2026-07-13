@@ -243,6 +243,9 @@ pub(super) fn compute_radar_layout(graph: &Graph, theme: &Theme, config: &Layout
         let block = measure_label(title, theme, config);
         left = left.max(block.width / 2.0 + CANVAS_MARGIN);
         right = right.max(block.width / 2.0 + CANVAS_MARGIN);
+        // The renderer hangs the title from MAX_RADIUS + 50 above the center.
+        // Reserve its full measured multiline height above the chart.
+        top = top.max(MAX_RADIUS + 50.0 + block.height + CANVAS_MARGIN);
     }
 
     let center_x = left;

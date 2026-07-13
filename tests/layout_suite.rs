@@ -579,6 +579,170 @@ fn pie_outside_labels_do_not_intrude_into_right_legend() {
 }
 
 #[test]
+fn pie_all_zero_values_use_equal_finite_slices() {
+    let parsed = parse_mermaid("pie\n\"A\" : 0\n\"B\" : 0\n\"C\" : 0\n").unwrap();
+    let layout = compute_layout(&parsed.graph, &Theme::modern(), &LayoutConfig::default());
+    let DiagramData::Pie(pie) = &layout.diagram else {
+        panic!("expected pie")
+    };
+    assert_eq!(pie.slices.len(), 3);
+    for slice in &pie.slices {
+        let span = slice.end_angle - slice.start_angle;
+        assert!(span.is_finite());
+        assert!((span - std::f32::consts::TAU / 3.0).abs() < 1e-4);
+    }
+}
+
+#[test]
+fn quadrant_point_label_bboxes_stay_inside_canvas() {
+    let parsed = parse_mermaid(
+        "quadrantChart\n  Very long left boundary label: [0, 1]\n  Much much longer right boundary point label: [1, 0]\n",
+    )
+    .unwrap();
+    let layout = compute_layout(&parsed.graph, &Theme::modern(), &LayoutConfig::default());
+    let DiagramData::Quadrant(quadrant) = &layout.diagram else {
+        panic!("expected quadrant")
+    };
+    for point in &quadrant.points {
+        assert!(point.x - point.label.width / 2.0 >= 0.0);
+        assert!(point.x + point.label.width / 2.0 <= layout.width);
+        assert!(point.y - point.label.height / 2.0 >= 0.0);
+        assert!(point.y + point.label.height / 2.0 <= layout.height);
+    }
+
+    let top_left = &quadrant.points[0];
+    assert_eq!(top_left.x, quadrant.grid_x);
+    assert_eq!(top_left.y, quadrant.grid_y);
+
+    let bottom_right = &quadrant.points[1];
+    assert_eq!(bottom_right.x, quadrant.grid_x + quadrant.grid_width);
+    assert_eq!(bottom_right.y, quadrant.grid_y + quadrant.grid_height);
+}
+
+#[test]
+fn xychart_category_labels_have_collision_safe_spacing_and_band() {
+    let parsed = parse_mermaid("xychart-beta\n  x-axis [A very long category, Another very long category, Third very long category]\n  bar [1, 2, 3]\n").unwrap();
+    let theme = Theme::modern();
+    let config = LayoutConfig::default();
+    let layout = compute_layout(&parsed.graph, &theme, &config);
+    let DiagramData::XYChart(xy) = &layout.diagram else {
+        panic!("expected xychart")
+    };
+    for pair in xy.x_axis_categories.windows(2) {
+        assert!(
+            pair[1].1 - pair[0].1 > 140.0,
+            "long categories remain too close"
+        );
+    }
+    assert!(layout.height - (xy.plot_y + xy.plot_height) >= theme.font_size + 16.0);
+}
+
+#[test]
+fn radar_multiline_title_increases_top_band() {
+    let mut parsed = parse_mermaid("radar-beta\n  axis A, B, C\n  curve S { 1, 2, 3 }\n").unwrap();
+    parsed.graph.radar.title = Some("First title line\nSecond title line".to_string());
+    let layout = compute_layout(&parsed.graph, &Theme::modern(), &LayoutConfig::default());
+    let DiagramData::Radar(radar) = &layout.diagram else {
+        panic!("expected radar")
+    };
+    assert!(
+        radar.center_y > 350.0,
+        "multiline title did not move chart down"
+    );
+}
+
+#[test]
+fn sankey_disconnected_nodes_do_not_overlap_and_cycles_expand_ranks() {
+    let parsed = parse_mermaid("sankey-beta\nA,B,5\nC,D,5\n").unwrap();
+    let layout = compute_layout(&parsed.graph, &Theme::modern(), &LayoutConfig::default());
+    let DiagramData::Sankey(sankey) = &layout.diagram else {
+        panic!("expected sankey")
+    };
+    for (index, node) in sankey.nodes.iter().enumerate() {
+        for other in sankey
+            .nodes
+            .iter()
+            .skip(index + 1)
+            .filter(|other| other.rank == node.rank)
+        {
+            assert!(node.y + node.height <= other.y || other.y + other.height <= node.y);
+        }
+    }
+
+    let parsed = parse_mermaid("sankey-beta\nA,B,1\nB,C,1\nC,A,1\n").unwrap();
+    let layout = compute_layout(&parsed.graph, &Theme::modern(), &LayoutConfig::default());
+    let DiagramData::Sankey(sankey) = &layout.diagram else {
+        panic!("expected sankey")
+    };
+    let ranks: std::collections::BTreeSet<_> = sankey.nodes.iter().map(|node| node.rank).collect();
+    assert!(ranks.len() > 1, "cyclic graph collapsed into one column");
+}
+
+#[test]
+fn sankey_cycles_preserve_condensation_ranks_and_forward_edges() {
+    let parsed = parse_mermaid(
+        "sankey-beta\nSource,A,1\nA,B,1\nB,A,1\nB,Sink,1\nOther,Leaf,1\nLoop,Loop,1\n",
+    )
+    .unwrap();
+    let layout = compute_layout(&parsed.graph, &Theme::modern(), &LayoutConfig::default());
+    let DiagramData::Sankey(sankey) = &layout.diagram else {
+        panic!("expected sankey")
+    };
+    let ranks: std::collections::BTreeMap<_, _> = sankey
+        .nodes
+        .iter()
+        .map(|node| (node.id.as_str(), node.rank))
+        .collect();
+
+    assert_eq!(ranks["Source"], 0);
+    assert_eq!(ranks["Other"], 0);
+    assert_eq!(ranks["Leaf"], 1);
+    assert_eq!(
+        ranks["Loop"], 0,
+        "self-loop should not shift other components"
+    );
+    assert_ne!(ranks["A"], ranks["B"], "SCC members must not collapse");
+    assert!(ranks["A"] >= 1 && ranks["B"] >= 1);
+    assert!(ranks["Sink"] > ranks["A"] && ranks["Sink"] > ranks["B"]);
+
+    for link in &sankey.links {
+        let source_component = matches!(
+            (link.source.as_str(), link.target.as_str()),
+            ("A", "B") | ("B", "A")
+        );
+        let self_loop = link.source == link.target;
+        if !source_component && !self_loop {
+            assert!(ranks[link.source.as_str()] < ranks[link.target.as_str()]);
+        }
+    }
+}
+
+#[test]
+fn sankey_scc_member_order_follows_declaration_order_deterministically() {
+    fn ranks(input: &str) -> std::collections::BTreeMap<String, usize> {
+        let parsed = parse_mermaid(input).unwrap();
+        let layout = compute_layout(&parsed.graph, &Theme::modern(), &LayoutConfig::default());
+        let DiagramData::Sankey(sankey) = layout.diagram else {
+            panic!("expected sankey")
+        };
+        sankey
+            .nodes
+            .into_iter()
+            .map(|node| (node.id, node.rank))
+            .collect()
+    }
+
+    let first = ranks("sankey-beta\nA,B,1\nB,C,1\nC,A,1\nC,D,1\n");
+    let repeated = ranks("sankey-beta\nA,B,1\nB,C,1\nC,A,1\nC,D,1\n");
+    let reordered = ranks("sankey-beta\nC,A,1\nA,B,1\nB,C,1\nC,D,1\n");
+
+    assert_eq!(first, repeated);
+    assert!(first["A"] < first["B"] && first["B"] < first["C"]);
+    assert!(reordered["C"] < reordered["A"] && reordered["A"] < reordered["B"]);
+    assert!(first["D"] > first["C"] && reordered["D"] > reordered["B"]);
+}
+
+#[test]
 fn bidirectional_flowchart_labels_do_not_overlap() {
     let input = r#"flowchart TD
     dep1 -->|subs| link1
@@ -1192,6 +1356,24 @@ fn state_block_note_renders_multiline_text() {
         left.x + left.width,
         comp.x
     );
+    let note_rect = |note: &mermaid_rs_renderer::layout::StateNoteLayout| {
+        (note.x, note.y, note.width, note.height)
+    };
+    for note in state_notes {
+        for (id, node) in &layout.nodes {
+            if id != &note.target && !node.hidden {
+                assert_eq!(
+                    rect_overlap_area(note_rect(note), (node.x, node.y, node.width, node.height)),
+                    0.0,
+                    "state note for {} overlaps node {id}",
+                    note.target
+                );
+            }
+        }
+        assert!(note.x >= 0.0 && note.y >= 0.0, "note must be within bounds");
+        assert!(note.x + note.width <= layout.width);
+        assert!(note.y + note.height <= layout.height);
+    }
 
     // Note text is emitted in the SVG.
     assert!(
@@ -1206,4 +1388,27 @@ fn state_block_note_renders_multiline_text() {
         svg.contains("Left side note"),
         "left note text missing from svg"
     );
+}
+
+#[test]
+fn multiple_state_notes_on_one_side_search_outward() {
+    let input = "stateDiagram-v2\n  direction LR\n  A --> B\n  note right of A: first\n  note right of A: second\n";
+    let parsed = parse_mermaid(input).expect("parse failed");
+    let layout = compute_layout(&parsed.graph, &Theme::modern(), &LayoutConfig::default());
+    let DiagramData::Graph { state_notes } = &layout.diagram else {
+        panic!("expected graph diagram data");
+    };
+    assert_eq!(state_notes.len(), 2);
+    let first = &state_notes[0];
+    let second = &state_notes[1];
+    assert_eq!(
+        rect_overlap_area(
+            (first.x, first.y, first.width, first.height),
+            (second.x, second.y, second.width, second.height)
+        ),
+        0.0,
+        "notes requested on the same side must not overlap"
+    );
+    assert!(second.x > first.x, "later right note should move outward");
+    assert!(second.x + second.width <= layout.width);
 }

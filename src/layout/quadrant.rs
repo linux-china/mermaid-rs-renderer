@@ -94,12 +94,15 @@ pub(super) fn compute_quadrant_layout(
         .map(|t| t.height + padding)
         .unwrap_or(padding);
 
-    let grid_x = y_axis_width + padding;
+    let base_grid_x = y_axis_width + padding;
     let grid_y = title_height + padding;
 
-    // Layout points
+    // Measure points before fixing the canvas bounds. QuadrantPointLayout has a
+    // single anchor shared by the marker and its label, so reserve any label
+    // overflow by translating/expanding the canvas rather than clamping that
+    // anchor and changing the point's data mapping.
     let palette = quadrant_palette(theme);
-    let points: Vec<QuadrantPointLayout> = graph
+    let measured_points: Vec<(f32, f32, TextBlock, String)> = graph
         .quadrant
         .points
         .iter()
@@ -107,18 +110,35 @@ pub(super) fn compute_quadrant_layout(
         .map(|(i, p)| {
             let x = finite_unit_interval(p.x);
             let y = finite_unit_interval(p.y);
-            let px = grid_x + x * grid_size;
-            let py = grid_y + (1.0 - y) * grid_size; // Invert Y
-            QuadrantPointLayout {
-                label: measure_label(&p.label, theme, config),
-                x: px,
-                y: py,
-                color: palette[i % palette.len()].clone(),
-            }
+            let label = measure_label(&p.label, theme, config);
+            (x, y, label, palette[i % palette.len()].clone())
         })
         .collect();
 
-    let width = grid_x + grid_size + padding * 2.0;
+    let base_width = base_grid_x + grid_size + padding * 2.0;
+    let left_overflow = measured_points
+        .iter()
+        .map(|(x, _, label, _)| (label.width / 2.0 - (base_grid_x + x * grid_size)).max(0.0))
+        .fold(0.0, f32::max);
+    let grid_x = base_grid_x + left_overflow;
+    let right_overflow = measured_points
+        .iter()
+        .map(|(x, _, label, _)| {
+            (base_grid_x + x * grid_size + label.width / 2.0 - base_width).max(0.0)
+        })
+        .fold(0.0, f32::max);
+
+    let points: Vec<QuadrantPointLayout> = measured_points
+        .into_iter()
+        .map(|(x, y, label, color)| QuadrantPointLayout {
+            label,
+            x: grid_x + x * grid_size,
+            y: grid_y + (1.0 - y) * grid_size,
+            color,
+        })
+        .collect();
+
+    let width = base_width + left_overflow + right_overflow;
     let height = grid_y + grid_size + x_axis_height + padding;
 
     Layout {

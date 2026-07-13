@@ -82,7 +82,12 @@ pub(super) fn compute_pie_layout(graph: &Graph, theme: &Theme, config: &LayoutCo
         .map(|slice| sanitize_pie_value(slice.value))
         .sum();
     let fallback_total = graph.pie_slices.len().max(1) as f32;
-    let total = if total > 0.0 { total } else { fallback_total };
+    let use_equal_fallback = total <= 0.0;
+    let total = if use_equal_fallback {
+        fallback_total
+    } else {
+        total
+    };
 
     #[derive(Clone)]
     struct PieDatum {
@@ -93,7 +98,11 @@ pub(super) fn compute_pie_layout(graph: &Graph, theme: &Theme, config: &LayoutCo
 
     let mut filtered: Vec<PieDatum> = Vec::new();
     for (idx, slice) in graph.pie_slices.iter().enumerate() {
-        let value = sanitize_pie_value(slice.value);
+        let value = if use_equal_fallback {
+            1.0
+        } else {
+            sanitize_pie_value(slice.value)
+        };
         let percent = if total > 0.0 {
             value / total * 100.0
         } else {
@@ -128,11 +137,7 @@ pub(super) fn compute_pie_layout(graph: &Graph, theme: &Theme, config: &LayoutCo
 
     let mut angle = 0.0_f32;
     for datum in &filtered {
-        let span = if total > 0.0 {
-            datum.value / total * std::f32::consts::PI * 2.0
-        } else {
-            std::f32::consts::PI * 2.0 / fallback_total
-        };
+        let span = datum.value / total * std::f32::consts::PI * 2.0;
         let label = measure_label_with_font_size(
             &datum.label,
             theme.pie_section_text_size,

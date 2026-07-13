@@ -47,7 +47,7 @@ pub(super) fn measure_label_with_max_width(
     let raw_lines = split_lines(text);
     let mut lines = Vec::new();
     let fast_metrics = config.fast_text_metrics;
-    let max_width = max_width.max(1.0);
+    let max_width = max_width.max(0.0);
     for line in raw_lines {
         if wrap {
             let wrapped = wrap_line(&line, max_width, font_size, font_family, fast_metrics);
@@ -62,13 +62,17 @@ pub(super) fn measure_label_with_max_width(
     }
 
     let max_len = lines.iter().map(|l| l.chars().count()).max().unwrap_or(1);
-    let max_width = lines
+    let measured_width = lines
         .iter()
         .map(|line| text_width(line, font_size, font_family, fast_metrics))
         .fold(0.0, f32::max);
     let avg_char = average_char_width(font_family, font_size, fast_metrics);
     let guard_width = max_len as f32 * avg_char;
-    let width = max_width.max(guard_width);
+    // Keep the historical guard against under-measured font metrics. The
+    // wrapping fix lives in `wrap_line`: oversized tokens are split before
+    // measurement, while an unavoidable single-glyph overflow still reports
+    // that glyph's real width here.
+    let width = measured_width.max(guard_width);
     let height = lines.len() as f32 * font_size * config.label_line_height;
 
     TextBlock {
@@ -400,10 +404,20 @@ pub(super) fn wrap_line(
         };
         if text_width(&candidate, font_size, font_family, fast_metrics) > max_width {
             if !current.is_empty() {
-                lines.push(current.clone());
-                current.clear();
+                lines.push(std::mem::take(&mut current));
             }
-            current.push_str(word);
+            let mut chunk = String::new();
+            for ch in word.chars() {
+                let mut candidate = chunk.clone();
+                candidate.push(ch);
+                if !chunk.is_empty()
+                    && text_width(&candidate, font_size, font_family, fast_metrics) > max_width
+                {
+                    lines.push(std::mem::take(&mut chunk));
+                }
+                chunk.push(ch);
+            }
+            current = chunk;
         } else {
             current = candidate;
         }
@@ -536,6 +550,96 @@ mod tests {
             true,
         );
         assert!(result.len() > 1, "expected wrapping, got {:?}", result);
+    }
+
+    #[test]
+    fn wrap_line_splits_long_ascii_token_into_longest_fitting_chunks() {
+        let result = wrap_line("abcdefghij", 30.0, 16.0, "sans-serif", true);
+        assert_eq!(result.concat(), "abcdefghij");
+        assert!(result.len() > 1);
+        assert!(
+            result
+                .iter()
+                .all(|line| fallback_text_width(line, 16.0) <= 30.0)
+        );
+        let mut consumed = 0;
+        for line in &result[..result.len() - 1] {
+            consumed += line.chars().count();
+            let next = "abcdefghij".chars().nth(consumed).unwrap();
+            assert!(fallback_text_width(&format!("{line}{next}"), 16.0) > 30.0);
+        }
+    }
+
+    #[test]
+    fn wrap_line_uses_longest_fitting_chunks_for_mixed_width_unicode() {
+        let text = "Wi中i界W";
+        let max_width = 20.0;
+        let result = wrap_line(text, max_width, 16.0, "sans-serif", true);
+        assert_eq!(result.concat(), text);
+
+        let mut consumed = 0;
+        for (index, line) in result.iter().enumerate() {
+            assert!(fallback_text_width(line, 16.0) <= max_width);
+            consumed += line.chars().count();
+            if index + 1 < result.len() {
+                let next = text.chars().nth(consumed).unwrap();
+                assert!(fallback_text_width(&format!("{line}{next}"), 16.0) > max_width);
+            }
+        }
+    }
+
+    #[test]
+    fn wrap_line_splits_unicode_only_at_char_boundaries() {
+        let result = wrap_line("你好世界测试", 32.0, 16.0, "sans-serif", true);
+        assert_eq!(result.concat(), "你好世界测试");
+        assert_eq!(result, vec!["你好", "世界", "测试"]);
+    }
+
+    #[test]
+    fn wrap_line_makes_progress_when_width_is_smaller_than_one_character() {
+        let result = wrap_line("wide", 0.1, 16.0, "sans-serif", true);
+        assert_eq!(result, vec!["w", "i", "d", "e"]);
+    }
+
+    #[test]
+    fn measure_label_reports_rendered_width_when_limit_is_narrower_than_one_glyph() {
+        let config = LayoutConfig {
+            fast_text_metrics: true,
+            ..LayoutConfig::default()
+        };
+        let block = measure_label_with_max_width("Wi中", 16.0, 0.1, &config, true, "sans-serif");
+        assert_eq!(block.lines, vec!["W", "i", "中"]);
+        let rendered_width = block
+            .lines
+            .iter()
+            .map(|line| text_width(line, 16.0, "sans-serif", true))
+            .fold(0.0, f32::max);
+        assert_eq!(block.width, rendered_width);
+        assert!(block.width > 0.1);
+    }
+
+    #[test]
+    fn measured_wrapped_lines_are_contained_by_max_width() {
+        let config = LayoutConfig {
+            fast_text_metrics: true,
+            ..LayoutConfig::default()
+        };
+        let max_width = 40.0;
+        let block = measure_label_with_max_width(
+            "averylongunbrokentoken 世界世界世界",
+            16.0,
+            max_width,
+            &config,
+            true,
+            "sans-serif",
+        );
+        assert!(block.width <= max_width);
+        assert!(
+            block
+                .lines
+                .iter()
+                .all(|line| { text_width(line, 16.0, "sans-serif", true) <= max_width })
+        );
     }
 
     #[test]

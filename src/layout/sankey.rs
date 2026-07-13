@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use crate::config::LayoutConfig;
 use crate::ir::Graph;
@@ -15,6 +15,7 @@ pub(super) fn compute_sankey_layout(graph: &Graph, theme: &Theme, config: &Layou
     const SANKEY_MAX_WIDTH: f32 = 640.0;
     const SANKEY_HEIGHT: f32 = 360.0;
     const SANKEY_NODE_WIDTH: f32 = 10.0;
+    const SANKEY_NODE_GAP: f32 = 8.0;
     const SANKEY_PALETTE: [&str; 10] = [
         "#4e79a7", "#f28e2c", "#e15759", "#76b7b2", "#59a14f", "#edc949", "#af7aa1", "#ff9da7",
         "#9c755f", "#bab0ab",
@@ -48,7 +49,6 @@ pub(super) fn compute_sankey_layout(graph: &Graph, theme: &Theme, config: &Layou
     let mut edges_data: Vec<SankeyEdgeData> = Vec::new();
     let mut incoming: Vec<Vec<usize>> = vec![Vec::new(); node_count];
     let mut outgoing: Vec<Vec<usize>> = vec![Vec::new(); node_count];
-    let mut indegree: Vec<usize> = vec![0; node_count];
     let mut in_total: Vec<f32> = vec![0.0; node_count];
     let mut out_total: Vec<f32> = vec![0.0; node_count];
 
@@ -77,37 +77,153 @@ pub(super) fn compute_sankey_layout(graph: &Graph, theme: &Theme, config: &Layou
         });
         outgoing[from_idx].push(edge_idx);
         incoming[to_idx].push(edge_idx);
-        indegree[to_idx] += 1;
         out_total[from_idx] += value;
         in_total[to_idx] += value;
     }
 
-    let mut ranks = vec![0usize; node_count];
-    let mut indegree_work = indegree.clone();
-    let mut queue: VecDeque<usize> = indegree_work
-        .iter()
-        .enumerate()
-        .filter_map(|(idx, deg)| (*deg == 0).then_some(idx))
-        .collect();
-    let mut topo = Vec::with_capacity(node_count);
-    while let Some(node_idx) = queue.pop_front() {
-        topo.push(node_idx);
-        for &edge_idx in &outgoing[node_idx] {
-            let to_idx = edges_data[edge_idx].to_idx;
-            if indegree_work[to_idx] > 0 {
-                indegree_work[to_idx] -= 1;
-                if indegree_work[to_idx] == 0 {
-                    queue.push_back(to_idx);
+    // Condense strongly connected components into a DAG. Component ranks use
+    // longest paths, just like ordinary acyclic Sankey ranking. A component
+    // occupies one column per member so cycles remain visible without making
+    // unrelated or disconnected nodes consume columns.
+    fn visit(
+        node: usize,
+        outgoing: &[Vec<usize>],
+        edges: &[SankeyEdgeData],
+        seen: &mut [bool],
+        finish: &mut Vec<usize>,
+    ) {
+        if seen[node] {
+            return;
+        }
+        seen[node] = true;
+        for &edge_idx in &outgoing[node] {
+            visit(edges[edge_idx].to_idx, outgoing, edges, seen, finish);
+        }
+        finish.push(node);
+    }
+
+    fn assign_component(
+        node: usize,
+        incoming: &[Vec<usize>],
+        edges: &[SankeyEdgeData],
+        component: usize,
+        component_of: &mut [usize],
+        members: &mut Vec<usize>,
+    ) {
+        if component_of[node] != usize::MAX {
+            return;
+        }
+        component_of[node] = component;
+        members.push(node);
+        for &edge_idx in &incoming[node] {
+            assign_component(
+                edges[edge_idx].from_idx,
+                incoming,
+                edges,
+                component,
+                component_of,
+                members,
+            );
+        }
+    }
+
+    let mut seen = vec![false; node_count];
+    let mut finish = Vec::with_capacity(node_count);
+    for node in 0..node_count {
+        visit(node, &outgoing, &edges_data, &mut seen, &mut finish);
+    }
+
+    let mut component_of = vec![usize::MAX; node_count];
+    let mut components: Vec<Vec<usize>> = Vec::new();
+    for &node in finish.iter().rev() {
+        if component_of[node] != usize::MAX {
+            continue;
+        }
+        let component = components.len();
+        let mut members = Vec::new();
+        assign_component(
+            node,
+            &incoming,
+            &edges_data,
+            component,
+            &mut component_of,
+            &mut members,
+        );
+        members.sort_by(|a, b| {
+            node_order_idx[*a]
+                .cmp(&node_order_idx[*b])
+                .then_with(|| node_ids[*a].cmp(&node_ids[*b]))
+        });
+        components.push(members);
+    }
+
+    let has_cycle = components.iter().any(|members| members.len() > 1)
+        || edges_data.iter().any(|edge| edge.from_idx == edge.to_idx);
+    let mut weak_seen = vec![false; node_count];
+    let mut weak_component_count = 0usize;
+    for start in 0..node_count {
+        if weak_seen[start] {
+            continue;
+        }
+        weak_component_count += 1;
+        let mut stack = vec![start];
+        weak_seen[start] = true;
+        while let Some(node) = stack.pop() {
+            for &edge_idx in outgoing[node].iter().chain(&incoming[node]) {
+                let edge = &edges_data[edge_idx];
+                let neighbor = if edge.from_idx == node {
+                    edge.to_idx
+                } else {
+                    edge.from_idx
+                };
+                if !weak_seen[neighbor] {
+                    weak_seen[neighbor] = true;
+                    stack.push(neighbor);
                 }
             }
         }
     }
-    if topo.len() == node_count {
-        for &node_idx in &topo {
-            for &edge_idx in &outgoing[node_idx] {
-                let to_idx = edges_data[edge_idx].to_idx;
-                ranks[to_idx] = ranks[to_idx].max(ranks[node_idx] + 1);
+    // Keep the established geometry byte-for-byte for ordinary connected
+    // acyclic Sankey diagrams. Extra packing is only needed where the old
+    // algorithm collapsed cycles or placed disconnected components on top of
+    // each other.
+    let requires_compaction = has_cycle || weak_component_count > 1;
+
+    let component_count = components.len();
+    let mut component_outgoing = vec![BTreeSet::new(); component_count];
+    let mut component_indegree = vec![0usize; component_count];
+    for edge in &edges_data {
+        let from = component_of[edge.from_idx];
+        let to = component_of[edge.to_idx];
+        if from != to && component_outgoing[from].insert(to) {
+            component_indegree[to] += 1;
+        }
+    }
+
+    let component_key = |component: usize| components[component][0];
+    let mut ready = BTreeSet::new();
+    for (component, &degree) in component_indegree.iter().enumerate() {
+        if degree == 0 {
+            ready.insert((component_key(component), component));
+        }
+    }
+    let mut component_rank = vec![0usize; component_count];
+    while let Some(&(key, component)) = ready.iter().next() {
+        ready.remove(&(key, component));
+        let next_rank = component_rank[component] + components[component].len();
+        for &target in &component_outgoing[component] {
+            component_rank[target] = component_rank[target].max(next_rank);
+            component_indegree[target] -= 1;
+            if component_indegree[target] == 0 {
+                ready.insert((component_key(target), target));
             }
+        }
+    }
+
+    let mut ranks = vec![0usize; node_count];
+    for (component, members) in components.iter().enumerate() {
+        for (offset, &node) in members.iter().enumerate() {
+            ranks[node] = component_rank[component] + offset;
         }
     }
 
@@ -126,8 +242,27 @@ pub(super) fn compute_sankey_layout(graph: &Graph, theme: &Theme, config: &Layou
         let total = in_total[idx].max(out_total[idx]);
         totals[idx] = if total > 0.0 { total } else { 1.0 };
     }
-    let max_total = totals.iter().copied().fold(0.0, f32::max).max(1.0);
-    let scale = SANKEY_HEIGHT / max_total;
+    let scale = if requires_compaction {
+        let mut rank_totals = vec![0.0f32; num_ranks];
+        let mut rank_counts = vec![0usize; num_ranks];
+        for idx in 0..node_count {
+            rank_totals[ranks[idx]] += totals[idx];
+            rank_counts[ranks[idx]] += 1;
+        }
+        let scale = rank_totals
+            .iter()
+            .zip(&rank_counts)
+            .filter(|&(&total, _)| total > 0.0)
+            .map(|(&total, &count)| {
+                let gaps = count.saturating_sub(1) as f32 * SANKEY_NODE_GAP;
+                ((SANKEY_HEIGHT - gaps).max(0.0) / total).max(0.0)
+            })
+            .fold(f32::INFINITY, f32::min);
+        if scale.is_finite() { scale } else { 1.0 }
+    } else {
+        let max_total = totals.iter().copied().fold(0.0, f32::max).max(1.0);
+        SANKEY_HEIGHT / max_total
+    };
 
     let mut node_x = vec![0.0f32; node_count];
     let mut node_y = vec![0.0f32; node_count];
@@ -148,6 +283,13 @@ pub(super) fn compute_sankey_layout(graph: &Graph, theme: &Theme, config: &Layou
                 .cmp(&node_order_idx[*b])
                 .then_with(|| node_ids[*a].cmp(&node_ids[*b]))
         });
+        if requires_compaction {
+            let mut y = 0.0;
+            for &idx in nodes_in_rank.iter() {
+                node_y[idx] = y;
+                y += node_h[idx] + SANKEY_NODE_GAP;
+            }
+        }
     }
 
     let mut outbound_order = outgoing.clone();
@@ -213,6 +355,33 @@ pub(super) fn compute_sankey_layout(graph: &Graph, theme: &Theme, config: &Layou
             node_y[node_idx] = min_top.clamp(0.0, max_y);
         }
     }
+    // Alignment may pull multiple nodes onto the same y. Pack every rank once
+    // more, preserving desired positions where possible while guaranteeing
+    // the configured gap and keeping the rank inside the canvas.
+    if requires_compaction {
+        for nodes_in_rank in &rank_nodes {
+            let mut y = 0.0;
+            for &idx in nodes_in_rank {
+                node_y[idx] = node_y[idx].max(y);
+                y = node_y[idx] + node_h[idx] + SANKEY_NODE_GAP;
+            }
+            let bottom = nodes_in_rank
+                .last()
+                .map(|&idx| node_y[idx] + node_h[idx])
+                .unwrap_or(0.0);
+            if bottom > SANKEY_HEIGHT {
+                let shift = bottom - SANKEY_HEIGHT;
+                for &idx in nodes_in_rank {
+                    node_y[idx] = (node_y[idx] - shift).max(0.0);
+                }
+                let mut y = 0.0;
+                for &idx in nodes_in_rank {
+                    node_y[idx] = node_y[idx].max(y);
+                    y = node_y[idx] + node_h[idx] + SANKEY_NODE_GAP;
+                }
+            }
+        }
+    }
     compute_link_tops(
         &node_y,
         &outbound_order,
@@ -221,6 +390,27 @@ pub(super) fn compute_sankey_layout(graph: &Graph, theme: &Theme, config: &Layou
         &mut outbound_offset,
         &mut acc,
     );
+    let mut inbound_offsets = vec![0.0f32; edges_data.len()];
+    if requires_compaction {
+        for target_idx in 0..node_count {
+            let mut ordered = incoming[target_idx].clone();
+            ordered.sort_by(|a, b| {
+                let source_center = |edge_idx: usize| {
+                    let source = edges_data[edge_idx].from_idx;
+                    node_y[source] + outbound_offset[edge_idx] + edge_thickness[edge_idx] / 2.0
+                };
+                source_center(*a)
+                    .partial_cmp(&source_center(*b))
+                    .unwrap_or(std::cmp::Ordering::Equal)
+                    .then_with(|| a.cmp(b))
+            });
+            let mut offset = 0.0;
+            for edge_idx in ordered {
+                inbound_offsets[edge_idx] = offset;
+                offset += edge_thickness[edge_idx];
+            }
+        }
+    }
 
     let mut node_colors = Vec::with_capacity(node_count);
     for idx in 0..node_count {
@@ -292,7 +482,11 @@ pub(super) fn compute_sankey_layout(graph: &Graph, theme: &Theme, config: &Layou
         let start_x = node_x[edge.from_idx] + SANKEY_NODE_WIDTH;
         let end_x = node_x[edge.to_idx];
         let start_y = node_y[edge.from_idx] + outbound_offset[edge_idx] + thickness / 2.0;
-        let inbound_offset = (link_top[edge_idx] - node_y[edge.to_idx]).max(0.0);
+        let inbound_offset = if requires_compaction {
+            inbound_offsets[edge_idx]
+        } else {
+            (link_top[edge_idx] - node_y[edge.to_idx]).max(0.0)
+        };
         let end_y = node_y[edge.to_idx] + inbound_offset + thickness / 2.0;
         let (color_start, _) = &node_colors[edge.from_idx];
         let (color_end, _) = &node_colors[edge.to_idx];

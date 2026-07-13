@@ -1006,6 +1006,12 @@ pub(in crate::layout) fn apply_direction_mirror(
             if let Some(anchor) = edge.label_anchor.as_mut() {
                 anchor.0 = max_x - anchor.0;
             }
+            if let Some(anchor) = edge.start_label_anchor.as_mut() {
+                anchor.0 = max_x - anchor.0;
+            }
+            if let Some(anchor) = edge.end_label_anchor.as_mut() {
+                anchor.0 = max_x - anchor.0;
+            }
         }
         for sub in subgraphs.iter_mut() {
             sub.x = max_x - sub.x - sub.width;
@@ -1020,6 +1026,12 @@ pub(in crate::layout) fn apply_direction_mirror(
                 point.1 = max_y - point.1;
             }
             if let Some(anchor) = edge.label_anchor.as_mut() {
+                anchor.1 = max_y - anchor.1;
+            }
+            if let Some(anchor) = edge.start_label_anchor.as_mut() {
+                anchor.1 = max_y - anchor.1;
+            }
+            if let Some(anchor) = edge.end_label_anchor.as_mut() {
                 anchor.1 = max_y - anchor.1;
             }
         }
@@ -1073,6 +1085,14 @@ pub(in crate::layout) fn normalize_layout(
             point.1 += shift_y;
         }
         if let Some(anchor) = edge.label_anchor.as_mut() {
+            anchor.0 += shift_x;
+            anchor.1 += shift_y;
+        }
+        if let Some(anchor) = edge.start_label_anchor.as_mut() {
+            anchor.0 += shift_x;
+            anchor.1 += shift_y;
+        }
+        if let Some(anchor) = edge.end_label_anchor.as_mut() {
             anchor.0 += shift_x;
             anchor.1 += shift_y;
         }
@@ -1526,6 +1546,93 @@ mod tests {
         config.max_label_width_chars = 8;
         let block = measure_label("this is a long label", &theme, &config);
         assert!(block.lines.len() > 1);
+    }
+
+    fn labeled_layout_edge() -> EdgeLayout {
+        let label = || TextBlock {
+            lines: vec!["long measured label".to_string()],
+            width: 120.0,
+            height: 20.0,
+        };
+        EdgeLayout {
+            from: "A".to_string(),
+            to: "B".to_string(),
+            label: Some(label()),
+            start_label: Some(label()),
+            end_label: Some(label()),
+            label_anchor: Some((10.0, 20.0)),
+            start_label_anchor: Some((-30.0, -20.0)),
+            end_label_anchor: Some((70.0, 60.0)),
+            points: vec![(0.0, 0.0), (40.0, 40.0)],
+            directed: true,
+            arrow_start: false,
+            arrow_end: true,
+            arrow_start_kind: None,
+            arrow_end_kind: None,
+            start_decoration: None,
+            end_decoration: None,
+            style: crate::ir::EdgeStyle::Solid,
+            override_style: crate::ir::EdgeStyleOverride::default(),
+        }
+    }
+
+    #[test]
+    fn normalize_layout_shifts_all_edge_label_anchors() {
+        let mut nodes = BTreeMap::new();
+        nodes.insert("A".to_string(), make_node("A", 0.0, 0.0, 20.0, 20.0));
+        let mut edges = vec![labeled_layout_edge()];
+        let original = edges[0].clone();
+
+        normalize_layout(&mut nodes, &mut edges, &mut []);
+
+        let edge = &edges[0];
+        let original_center = original.label_anchor.unwrap();
+        let center = edge.label_anchor.unwrap();
+        let shift = (center.0 - original_center.0, center.1 - original_center.1);
+
+        for (before, after) in [
+            (original.label_anchor, edge.label_anchor),
+            (original.start_label_anchor, edge.start_label_anchor),
+            (original.end_label_anchor, edge.end_label_anchor),
+        ] {
+            let (before, after) = (before.unwrap(), after.unwrap());
+            assert!((after.0 - before.0 - shift.0).abs() < 1e-3);
+            assert!((after.1 - before.1 - shift.1).abs() < 1e-3);
+        }
+        for (before, after) in original.points.iter().zip(&edge.points) {
+            assert!((after.0 - before.0 - shift.0).abs() < 1e-3);
+            assert!((after.1 - before.1 - shift.1).abs() < 1e-3);
+        }
+    }
+
+    #[test]
+    fn direction_mirror_transforms_all_edge_label_anchors() {
+        for direction in [
+            Direction::LeftRight,
+            Direction::RightLeft,
+            Direction::TopDown,
+            Direction::BottomTop,
+        ] {
+            let mut nodes = BTreeMap::new();
+            nodes.insert("A".to_string(), make_node("A", 0.0, 0.0, 100.0, 80.0));
+            let mut edges = vec![labeled_layout_edge()];
+            apply_direction_mirror(direction, &mut nodes, &mut edges, &mut []);
+            let edge = &edges[0];
+            match direction {
+                Direction::RightLeft => {
+                    assert_eq!(edge.start_label_anchor, Some((130.0, -20.0)));
+                    assert_eq!(edge.end_label_anchor, Some((30.0, 60.0)));
+                }
+                Direction::BottomTop => {
+                    assert_eq!(edge.start_label_anchor, Some((-30.0, 100.0)));
+                    assert_eq!(edge.end_label_anchor, Some((70.0, 20.0)));
+                }
+                _ => {
+                    assert_eq!(edge.start_label_anchor, Some((-30.0, -20.0)));
+                    assert_eq!(edge.end_label_anchor, Some((70.0, 60.0)));
+                }
+            }
+        }
     }
 
     #[test]

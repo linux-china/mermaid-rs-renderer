@@ -288,6 +288,14 @@ pub fn render_svg_with_dimensions(
     } else if !preferred_ratio_style.is_empty() {
         style_attr = format!(" style=\"{preferred_ratio_style}\"");
     }
+    if dimensions.is_some() {
+        let background_style = format!("background-color:{};", escape_xml(&theme.background));
+        if style_attr.is_empty() {
+            style_attr = format!(" style=\"{background_style}\"");
+        } else if let Some(quote) = style_attr.rfind('"') {
+            style_attr.insert_str(quote, &background_style);
+        }
+    }
     svg.push_str(&format!(
         "<svg xmlns=\"http://www.w3.org/2000/svg\"{} width=\"{width_attr}\"{} viewBox=\"{viewbox_x} {viewbox_y} {viewbox_width} {viewbox_height}\"{style_attr}>",
         if has_links {
@@ -3545,25 +3553,27 @@ fn render_quadrant(
     if let Some(ref y_bottom) = layout.y_axis_bottom {
         let axis_x = grid_x - theme.font_size * 2.2;
         let axis_y = grid_y + half_h + half_h / 2.0;
-        svg.push_str(&format!(
-            "<text x=\"{:.2}\" y=\"{:.2}\" text-anchor=\"end\" dominant-baseline=\"middle\" font-family=\"{}\" font-size=\"{}\" fill=\"#131300\"><tspan>{}</tspan></text>",
+        svg.push_str(&text_block_svg_anchor(
             axis_x,
             axis_y,
-            normalize_font_family(&theme.font_family),
-            theme.font_size,
-            y_bottom.lines.first().map(|s| s.as_str()).unwrap_or("")
+            y_bottom,
+            theme,
+            config,
+            "end",
+            Some("#131300"),
         ));
     }
     if let Some(ref y_top) = layout.y_axis_top {
         let axis_x = grid_x - theme.font_size * 2.2;
         let axis_y = grid_y + half_h / 2.0;
-        svg.push_str(&format!(
-            "<text x=\"{:.2}\" y=\"{:.2}\" text-anchor=\"end\" dominant-baseline=\"middle\" font-family=\"{}\" font-size=\"{}\" fill=\"#131300\"><tspan>{}</tspan></text>",
+        svg.push_str(&text_block_svg_anchor(
             axis_x,
             axis_y,
-            normalize_font_family(&theme.font_family),
-            theme.font_size,
-            y_top.lines.first().map(|s| s.as_str()).unwrap_or("")
+            y_top,
+            theme,
+            config,
+            "end",
+            Some("#131300"),
         ));
     }
 
@@ -3976,6 +3986,21 @@ fn render_timeline(
             config,
             false,
             Some(theme.primary_text_color.as_str()),
+        ));
+    }
+
+    for section in &layout.sections {
+        svg.push_str(&text_block_svg_with_font_size_weight(
+            section.x + section.width / 2.0,
+            section.y + section.height / 2.0,
+            &section.label,
+            theme,
+            config,
+            theme.font_size,
+            "middle",
+            Some(theme.primary_text_color.as_str()),
+            Some("bold"),
+            false,
         ));
     }
 
@@ -6130,9 +6155,8 @@ fn arrowhead_svg(point: (f32, f32), angle_deg: f32, stroke: &str, stroke_width: 
     let size = (stroke_width * 1.5 + 4.5).clamp(5.5, 10.0);
     let half = size * 0.52;
     let (x, y) = point;
-    let join = " stroke-linejoin=\"round\" stroke-linecap=\"round\"";
     format!(
-        "<g transform=\"translate({x:.2} {y:.2}) rotate({angle_deg:.2})\"><polygon points=\"0,0 {neg_size:.2},{half:.2} {neg_size:.2},{neg_half:.2}\" fill=\"{stroke}\" stroke=\"{stroke}\" stroke-width=\"{stroke_width}\"{join}/></g>",
+        "<g transform=\"translate({x:.2} {y:.2}) rotate({angle_deg:.2})\"><polygon points=\"0,0 {neg_size:.2},{half:.2} {neg_size:.2},{neg_half:.2}\" fill=\"{stroke}\"/></g>",
         neg_size = -size,
         half = half,
         neg_half = -half,
@@ -6980,6 +7004,71 @@ mod tests {
             crate::edge_geometry::edge_endpoint_angle(&points, false),
             45.0
         );
+    }
+
+    #[test]
+    fn explicit_aspect_mismatch_fills_letterbox_without_distorting_viewbox() {
+        let parsed = crate::parser::parse_mermaid("flowchart LR\n  A --> B\n").unwrap();
+        let theme = Theme::modern();
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&parsed.graph, &theme, &config);
+
+        let explicit = render_svg_with_dimensions(&layout, &theme, &config, Some((900.0, 120.0)));
+        assert!(explicit.contains("width=\"900\" height=\"120\""));
+        assert!(explicit.contains("style=\"background-color:#FFFFFF;\""));
+        assert!(!explicit.contains("preserveAspectRatio=\"none\""));
+
+        let natural = render_svg(&layout, &theme, &config);
+        assert!(!natural.contains("style=\"background-color:#FFFFFF;\""));
+    }
+
+    #[test]
+    fn overlay_arrowhead_tip_is_exact_and_body_extends_backward_for_thick_edges() {
+        let arrow = arrowhead_svg((80.0, 25.0), 0.0, "#123456", 3.5);
+        assert!(arrow.contains("translate(80.00 25.00) rotate(0.00)"));
+        assert!(arrow.contains("points=\"0,0 -9.75,5.07 -9.75,-5.07\""));
+        assert!(arrow.contains("fill=\"#123456\""));
+        assert!(!arrow.contains("stroke-width"));
+    }
+
+    #[test]
+    fn timeline_sections_render_and_reserve_measured_space() {
+        let parsed = crate::parser::parse_mermaid(
+            "timeline\n  title History\n  2020 : Start\n  section A very long measured heading\n    2021 : Continue\n",
+        )
+        .unwrap();
+        let theme = Theme::modern();
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&parsed.graph, &theme, &config);
+        let DiagramData::Timeline(timeline) = &layout.diagram else {
+            panic!("expected timeline");
+        };
+        let section = &timeline.sections[0];
+
+        assert!(section.width >= section.label.width);
+        assert!(timeline.line_start_y > section.y + section.height);
+        assert!(layout.width >= section.x + section.width);
+        let svg = render_svg(&layout, &theme, &config);
+        for line in &section.label.lines {
+            assert!(svg.contains(line), "missing rendered section line: {line}");
+        }
+    }
+
+    #[test]
+    fn quadrant_vertical_axis_labels_render_all_measured_lines() {
+        let parsed = crate::parser::parse_mermaid(
+            "quadrantChart\n  y-axis Bottom<br/>Second --> Top<br/>Fourth\n  quadrant-1 One\n  quadrant-2 Two\n  quadrant-3 Three\n  quadrant-4 Four\n",
+        )
+        .unwrap();
+        let theme = Theme::modern();
+        let config = LayoutConfig::default();
+        let layout = compute_layout(&parsed.graph, &theme, &config);
+        let svg = render_svg(&layout, &theme, &config);
+
+        assert!(svg.contains("Bottom"));
+        assert!(svg.contains("Second"));
+        assert!(svg.contains("Top"));
+        assert!(svg.contains("Fourth"));
     }
 
     #[test]

@@ -37,6 +37,21 @@ pub(super) fn compute_timeline_layout(
     let title_height = if data.title.is_some() { 40.0 } else { 0.0 };
 
     let title = data.title.as_ref().map(|t| measure_label(t, theme, config));
+    let measured_sections: Vec<TextBlock> = data
+        .sections
+        .iter()
+        .map(|section| measure_label(section, theme, config))
+        .collect();
+    let section_gap = 20.0_f32;
+    let section_height = measured_sections
+        .iter()
+        .map(|label| label.height)
+        .fold(0.0, f32::max);
+    let section_row_height = if measured_sections.is_empty() {
+        0.0
+    } else {
+        section_height + section_gap
+    };
 
     let mut max_event_height = min_event_height;
     let mut measured_events = Vec::with_capacity(data.events.len());
@@ -120,7 +135,7 @@ pub(super) fn compute_timeline_layout(
 
     let (events, width, height, line_y, line_start_x, line_end_x, line_start_y, line_end_y) =
         if direction == Direction::TopDown {
-            let content_top = padding + title_height + 30.0;
+            let content_top = padding + title_height + section_row_height + 30.0;
             let line_x = padding + 20.0;
             let event_x = line_x + 40.0;
             let content_height = if measured_events.is_empty() {
@@ -136,7 +151,13 @@ pub(super) fn compute_timeline_layout(
                 .iter()
                 .map(|event| event.width)
                 .fold(min_event_width, f32::max);
-            let width = event_x + content_width + padding;
+            let section_content_width = measured_sections
+                .iter()
+                .map(|label| label.width)
+                .sum::<f32>()
+                + measured_sections.len().saturating_sub(1) as f32 * section_gap;
+            let width =
+                (event_x + content_width + padding).max(padding * 2.0 + section_content_width);
             let height = content_top + content_height + padding;
             let mut y = content_top;
             let mut events = Vec::with_capacity(measured_events.len());
@@ -166,12 +187,19 @@ pub(super) fn compute_timeline_layout(
                 content_top + content_height,
             )
         } else {
-            let line_y = padding + title_height + 60.0;
+            let line_y = padding + title_height + section_row_height + 60.0;
             let num_events = measured_events.len().max(1);
             let total_events_width =
                 num_events as f32 * min_event_width + (num_events - 1) as f32 * event_spacing;
-            let width = padding * 2.0 + total_events_width;
-            let height = padding * 2.0 + title_height + max_event_height + 100.0;
+            let section_content_width = measured_sections
+                .iter()
+                .map(|label| label.width)
+                .sum::<f32>()
+                + measured_sections.len().saturating_sub(1) as f32 * section_gap;
+            let width =
+                (padding * 2.0 + total_events_width).max(padding * 2.0 + section_content_width);
+            let height =
+                padding * 2.0 + title_height + section_row_height + max_event_height + 100.0;
             let mut events = Vec::with_capacity(measured_events.len());
 
             for (i, measured) in measured_events.into_iter().enumerate() {
@@ -200,18 +228,26 @@ pub(super) fn compute_timeline_layout(
             )
         };
 
-    let sections: Vec<TimelineSectionLayout> = data
-        .sections
+    let section_total_width = measured_sections
         .iter()
-        .enumerate()
-        .map(|(i, section)| {
-            let label = measure_label(section, theme, config);
+        .map(|label| label.width)
+        .sum::<f32>()
+        + measured_sections.len().saturating_sub(1) as f32 * section_gap;
+    let mut section_x = ((width - section_total_width) / 2.0).max(padding);
+    let sections: Vec<TimelineSectionLayout> = measured_sections
+        .into_iter()
+        .map(|label| {
+            let label_width = label.width;
             TimelineSectionLayout {
                 label,
-                x: padding + i as f32 * 200.0,
-                y: padding,
-                width: 180.0,
-                height: 30.0,
+                x: {
+                    let x = section_x;
+                    section_x += label_width + section_gap;
+                    x
+                },
+                y: padding + title_height,
+                width: label_width,
+                height: section_height,
             }
         })
         .collect();
@@ -260,5 +296,65 @@ pub(super) fn compute_timeline_layout(
         }),
         width,
         height,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ir::{DiagramKind, TimelineEvent};
+
+    fn timeline_layout(direction: Direction) -> Layout {
+        let mut graph = Graph::new();
+        graph.kind = DiagramKind::Timeline;
+        graph.timeline.title = Some("A timeline title".to_string());
+        graph.timeline.direction = Some(direction);
+        graph.timeline.sections = vec![
+            "A very long measured section heading".to_string(),
+            "Another very long measured section heading".to_string(),
+        ];
+        graph.timeline.events = vec![
+            TimelineEvent {
+                time: "2024".to_string(),
+                events: vec!["First event".to_string()],
+                section: Some(graph.timeline.sections[0].clone()),
+            },
+            TimelineEvent {
+                time: "2025".to_string(),
+                events: vec!["Second event with a longer description".to_string()],
+                section: Some(graph.timeline.sections[1].clone()),
+            },
+        ];
+
+        compute_timeline_layout(&graph, &Theme::mermaid_default(), &LayoutConfig::default())
+    }
+
+    fn assert_timeline_bboxes_within_layout(layout: &Layout) {
+        let DiagramData::Timeline(timeline) = &layout.diagram else {
+            panic!("expected timeline layout");
+        };
+
+        for section in &timeline.sections {
+            assert!(section.x >= 0.0);
+            assert!(section.y >= 0.0);
+            assert!(section.x + section.width <= layout.width);
+            assert!(section.y + section.height <= layout.height);
+        }
+        for event in &timeline.events {
+            assert!(event.x >= 0.0);
+            assert!(event.y >= 0.0);
+            assert!(event.x + event.width <= layout.width);
+            assert!(event.y + event.height <= layout.height);
+        }
+    }
+
+    #[test]
+    fn left_right_section_and_event_bboxes_fit_layout() {
+        assert_timeline_bboxes_within_layout(&timeline_layout(Direction::LeftRight));
+    }
+
+    #[test]
+    fn top_down_section_and_event_bboxes_fit_layout() {
+        assert_timeline_bboxes_within_layout(&timeline_layout(Direction::TopDown));
     }
 }
