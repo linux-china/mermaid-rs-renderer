@@ -256,6 +256,7 @@ fn build_ordering_edges(
 #[derive(Debug, Default)]
 pub(in crate::layout) struct ManualLayoutRanks {
     pub(in crate::layout) rank_nodes: Vec<Vec<String>>,
+    pub(in crate::layout) feedback_edges: Vec<(String, String)>,
 }
 
 pub(in crate::layout) fn assign_positions_manual(
@@ -729,7 +730,24 @@ pub(in crate::layout) fn assign_positions_manual(
             place_rank(rank_idx, false, nodes);
         }
     }
-    ManualLayoutRanks { rank_nodes }
+    let mut rank_by_id: HashMap<&str, usize> = HashMap::new();
+    for (rank, bucket) in rank_nodes.iter().enumerate() {
+        for id in bucket {
+            rank_by_id.insert(id.as_str(), rank);
+        }
+    }
+    let feedback_edges = layout_edges
+        .iter()
+        .filter_map(|edge| {
+            let from_rank = rank_by_id.get(edge.from.as_str())?;
+            let to_rank = rank_by_id.get(edge.to.as_str())?;
+            (*to_rank <= *from_rank).then(|| (edge.from.clone(), edge.to.clone()))
+        })
+        .collect();
+    ManualLayoutRanks {
+        rank_nodes,
+        feedback_edges,
+    }
 }
 
 #[cfg(test)]

@@ -28,6 +28,10 @@ use architecture::*;
 use block::*;
 use c4::*;
 use error::*;
+pub use flowchart::layered_engine::{
+    LayeredEdgeSnapshot, LayeredFeedbackEdgeSnapshot, LayeredLayoutSnapshot, LayeredNodeSnapshot,
+    LayeredRankSnapshot, write_layered_layout_dump,
+};
 use gantt::*;
 use gitgraph::*;
 pub use invariants::{
@@ -142,14 +146,19 @@ const STATE_RANK_SPACING_BOOST: f32 = 25.0;
 
 #[derive(Debug, Clone, Default)]
 pub struct LayoutStageMetrics {
+    pub layered_layout_us: u128,
     pub port_assignment_us: u128,
     pub edge_routing_us: u128,
     pub label_placement_us: u128,
+    pub layered_layout: Option<LayeredLayoutSnapshot>,
 }
 
 impl LayoutStageMetrics {
     pub fn total_us(&self) -> u128 {
-        self.port_assignment_us + self.edge_routing_us + self.label_placement_us
+        self.layered_layout_us
+            + self.port_assignment_us
+            + self.edge_routing_us
+            + self.label_placement_us
     }
 }
 
@@ -427,7 +436,7 @@ fn compute_flowchart_layout(
     graph: &Graph,
     theme: &Theme,
     config: &LayoutConfig,
-    stage_metrics: Option<&mut LayoutStageMetrics>,
+    mut stage_metrics: Option<&mut LayoutStageMetrics>,
 ) -> Layout {
     let mut effective_config = flowchart::policy::apply_initial_config_heuristics(graph, config);
     let tiny_graph = flowchart::policy::is_tiny_graph_layout(graph);
@@ -607,6 +616,7 @@ fn compute_flowchart_layout(
         .collect();
 
     let mut label_dummy_ids: Vec<Option<String>> = vec![None; graph.edges.len()];
+    let layered_layout_started = Instant::now();
     let rank_info = flowchart::manual_layout::assign_positions_manual(
         graph,
         &layout_node_ids,
@@ -618,6 +628,18 @@ fn compute_flowchart_layout(
         &edge_route_labels,
         &mut label_dummy_ids,
     );
+    if let Some(metrics) = stage_metrics.as_deref_mut() {
+        metrics.layered_layout_us = layered_layout_started.elapsed().as_micros();
+        metrics.layered_layout = Some(
+            flowchart::layered_engine::LayeredLayoutSnapshot::from_stage(
+                config.flowchart.engine,
+                graph.direction,
+                &nodes,
+                &layout_edges,
+                &rank_info,
+            ),
+        );
+    }
 
     // Opt-in aspect-ratio goal: fold over-wide flowcharts into serpentine
     // bands before the downstream passes see the geometry. No-op unless

@@ -777,6 +777,28 @@ pub struct LayoutConfig {
     pub timeline: TimelineConfig,
 }
 
+/// Selects the layered node-placement implementation used by graph diagrams.
+///
+/// `Current` preserves the renderer's existing placement behavior. `Dagre`
+/// enables the experimental Dagre-style pipeline while keeping the same
+/// downstream port assignment, routing, label placement, and rendering code.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum FlowchartLayoutEngine {
+    #[default]
+    Current,
+    Dagre,
+}
+
+impl FlowchartLayoutEngine {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Current => "current",
+            Self::Dagre => "dagre",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimelineConfig {
     pub direction: String,
@@ -821,6 +843,7 @@ impl LayoutConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FlowchartLayoutConfig {
+    pub engine: FlowchartLayoutEngine,
     pub order_passes: usize,
     pub port_pad_ratio: f32,
     pub port_pad_min: f32,
@@ -834,6 +857,7 @@ pub struct FlowchartLayoutConfig {
 impl Default for FlowchartLayoutConfig {
     fn default() -> Self {
         Self {
+            engine: FlowchartLayoutEngine::Current,
             order_passes: 4,
             port_pad_ratio: 0.2,
             port_pad_min: 4.0,
@@ -1096,6 +1120,7 @@ impl NumberOrString {
 struct FlowchartConfig {
     node_spacing: Option<f32>,
     rank_spacing: Option<f32>,
+    engine: Option<FlowchartLayoutEngine>,
     order_passes: Option<usize>,
     port_pad_ratio: Option<f32>,
     port_pad_min: Option<f32>,
@@ -1806,6 +1831,9 @@ pub fn load_config_with_theme(
         }
         if let Some(v) = flow.rank_spacing {
             config.layout.rank_spacing = v;
+        }
+        if let Some(v) = flow.engine {
+            config.layout.flowchart.engine = v;
         }
         if let Some(v) = flow.order_passes {
             config.layout.flowchart.order_passes = v;
@@ -3132,6 +3160,13 @@ pub fn merge_init_config(mut config: Config, init: serde_json::Value) -> Config 
         }
         if let Some(val) = flowchart.get("rankSpacing").and_then(|v| v.as_f64()) {
             config.layout.rank_spacing = val as f32;
+        }
+        if let Some(val) = flowchart.get("engine").and_then(|v| v.as_str()) {
+            config.layout.flowchart.engine = match val.to_ascii_lowercase().as_str() {
+                "current" => FlowchartLayoutEngine::Current,
+                "dagre" => FlowchartLayoutEngine::Dagre,
+                _ => config.layout.flowchart.engine,
+            };
         }
         if let Some(val) = flowchart.get("orderPasses").and_then(|v| v.as_u64()) {
             config.layout.flowchart.order_passes = val as usize;

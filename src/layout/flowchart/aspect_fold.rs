@@ -563,6 +563,7 @@ mod tests {
         graph.edges = edges.clone();
         let rank_info = ManualLayoutRanks {
             rank_nodes: ids.iter().map(|id| vec![(*id).to_string()]).collect(),
+            feedback_edges: Vec::new(),
         };
         let mut nodes = BTreeMap::new();
         for (idx, id) in ids.iter().enumerate() {

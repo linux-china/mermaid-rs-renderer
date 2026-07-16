@@ -104,7 +104,7 @@ pub(crate) mod unicode_width;
 pub mod validator;
 
 // Re-export commonly used types at crate root for ergonomic library usage
-pub use config::{Config, LayoutConfig, RenderConfig, merge_init_config};
+pub use config::{Config, FlowchartLayoutEngine, LayoutConfig, RenderConfig, merge_init_config};
 pub use error::ParseError;
 pub use ir::{
     DiagramKind, Direction, Edge, EdgeArrowhead, EdgeDecoration, EdgeStyle, Graph, Node, NodeLink,
@@ -112,8 +112,9 @@ pub use ir::{
     SequenceActivationKind, SequenceBox, StateNote, StateNotePosition, Subgraph,
 };
 pub use layout::{
-    EdgeLayout, Layout, LayoutStageMetrics, NodeLayout, SubgraphLayout, compute_layout,
-    compute_layout_with_metrics,
+    EdgeLayout, LayeredEdgeSnapshot, LayeredFeedbackEdgeSnapshot, LayeredLayoutSnapshot,
+    LayeredNodeSnapshot, LayeredRankSnapshot, Layout, LayoutStageMetrics, NodeLayout,
+    SubgraphLayout, compute_layout, compute_layout_with_metrics, write_layered_layout_dump,
 };
 pub use parser::{ParseOutput, parse_mermaid};
 #[cfg(feature = "png")]

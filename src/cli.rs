@@ -1,5 +1,7 @@
-use crate::config::{load_config_with_theme, merge_init_config, parse_aspect_ratio_value};
-use crate::layout::compute_layout_with_metrics;
+use crate::config::{
+    FlowchartLayoutEngine, load_config_with_theme, merge_init_config, parse_aspect_ratio_value,
+};
+use crate::layout::{compute_layout_with_metrics, write_layered_layout_dump};
 use crate::layout_dump::write_layout_dump;
 use crate::parser::parse_mermaid;
 #[cfg(feature = "png")]
@@ -62,6 +64,14 @@ pub struct Args {
     #[arg(long = "dumpLayout")]
     pub dump_layout: Option<PathBuf>,
 
+    /// Layered flowchart placement engine (`current` or experimental `dagre`)
+    #[arg(long = "layoutEngine", value_enum)]
+    pub layout_engine: Option<LayoutEngineArg>,
+
+    /// Dump the deterministic layered placement stage before routing/cleanup
+    #[arg(long = "dumpLayeredLayout")]
+    pub dump_layered_layout: Option<PathBuf>,
+
     /// Output timing information as JSON to stderr
     #[arg(long = "timing")]
     pub timing: bool,
@@ -79,6 +89,21 @@ pub struct Args {
 pub enum OutputFormat {
     Svg,
     Png,
+}
+
+#[derive(ValueEnum, Debug, Clone, Copy)]
+pub enum LayoutEngineArg {
+    Current,
+    Dagre,
+}
+
+impl From<LayoutEngineArg> for FlowchartLayoutEngine {
+    fn from(value: LayoutEngineArg) -> Self {
+        match value {
+            LayoutEngineArg::Current => Self::Current,
+            LayoutEngineArg::Dagre => Self::Dagre,
+        }
+    }
 }
 
 /// Fallback dimensions used when only one of --width/--height is given and
@@ -109,6 +134,9 @@ pub fn run() -> Result<()> {
     if args.fast_text_metrics {
         base_config.layout.fast_text_metrics = true;
     }
+    if let Some(engine) = args.layout_engine {
+        base_config.layout.flowchart.engine = engine.into();
+    }
 
     let (input, is_markdown) = read_input(args.input.as_deref())?;
     let diagrams = if is_markdown {
@@ -124,6 +152,14 @@ pub fn run() -> Result<()> {
     let layout_outputs = if args.dump_layout.is_some() {
         Some(resolve_layout_outputs(
             args.dump_layout.as_deref(),
+            diagrams.len(),
+        )?)
+    } else {
+        None
+    };
+    let layered_layout_outputs = if args.dump_layered_layout.is_some() {
+        Some(resolve_layout_outputs(
+            args.dump_layered_layout.as_deref(),
             diagrams.len(),
         )?)
     } else {
@@ -149,6 +185,14 @@ pub fn run() -> Result<()> {
             && let Some(path) = outputs.first()
         {
             write_layout_dump(path, &layout, &parsed.graph)?;
+        }
+        if let Some(outputs) = layered_layout_outputs.as_ref()
+            && let Some(path) = outputs.first()
+        {
+            let snapshot = layout_stages.layered_layout.as_ref().ok_or_else(|| {
+                anyhow::anyhow!("--dumpLayeredLayout is only available for layered graph layouts")
+            })?;
+            write_layered_layout_dump(path, snapshot)?;
         }
 
         let dimensions = measure_svg_dimensions(&layout, &config.layout, explicit_dimensions);
@@ -187,6 +231,7 @@ pub fn run() -> Result<()> {
                 "render_us": render_us,
                 "total_us": total_us,
                 "layout_stage_us": {
+                    "layered_layout_us": layout_stages.layered_layout_us,
                     "port_assignment_us": layout_stages.port_assignment_us,
                     "edge_routing_us": layout_stages.edge_routing_us,
                     "label_placement_us": layout_stages.label_placement_us,
@@ -207,8 +252,18 @@ pub fn run() -> Result<()> {
             if let Some(init_cfg) = parsed.init_config.clone() {
                 config = merge_init_config(config, init_cfg);
             }
-            let (layout, _) =
+            let (layout, layout_stages) =
                 compute_layout_with_metrics(&parsed.graph, &config.theme, &config.layout);
+            if let Some(outputs) = layered_layout_outputs.as_ref()
+                && let Some(path) = outputs.get(idx)
+            {
+                let snapshot = layout_stages.layered_layout.as_ref().ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "--dumpLayeredLayout is only available for layered graph layouts"
+                    )
+                })?;
+                write_layered_layout_dump(path, snapshot)?;
+            }
             let dimensions = measure_svg_dimensions(&layout, &config.layout, explicit_dimensions);
             sizes.push(serde_json::json!({
                 "index": idx,
@@ -227,12 +282,20 @@ pub fn run() -> Result<()> {
         if let Some(init_cfg) = parsed.init_config.clone() {
             config = merge_init_config(config, init_cfg);
         }
-        let (layout, _layout_stages) =
+        let (layout, layout_stages) =
             compute_layout_with_metrics(&parsed.graph, &config.theme, &config.layout);
         if let Some(outputs) = layout_outputs.as_ref()
             && let Some(path) = outputs.get(idx)
         {
             write_layout_dump(path, &layout, &parsed.graph)?;
+        }
+        if let Some(outputs) = layered_layout_outputs.as_ref()
+            && let Some(path) = outputs.get(idx)
+        {
+            let snapshot = layout_stages.layered_layout.as_ref().ok_or_else(|| {
+                anyhow::anyhow!("--dumpLayeredLayout is only available for layered graph layouts")
+            })?;
+            write_layered_layout_dump(path, snapshot)?;
         }
         let svg =
             render_svg_with_dimensions(&layout, &config.theme, &config.layout, explicit_dimensions);
@@ -447,12 +510,31 @@ sequenceDiagram
         let init = json!({
             "flowchart": {
                 "nodeSpacing": 55,
-                "rankSpacing": 90
+                "rankSpacing": 90,
+                "engine": "dagre"
             }
         });
         let merged = merge_init_config(config, init);
         assert_eq!(merged.layout.node_spacing, 55.0);
         assert_eq!(merged.layout.rank_spacing, 90.0);
+        assert_eq!(merged.layout.flowchart.engine, FlowchartLayoutEngine::Dagre);
+    }
+
+    #[test]
+    fn parses_layered_layout_engine_and_dump_path() {
+        let args = Args::try_parse_from([
+            "mmdr",
+            "--layoutEngine",
+            "dagre",
+            "--dumpLayeredLayout",
+            "stage.json",
+        ])
+        .unwrap();
+        assert!(matches!(args.layout_engine, Some(LayoutEngineArg::Dagre)));
+        assert_eq!(
+            args.dump_layered_layout.as_deref(),
+            Some(Path::new("stage.json"))
+        );
     }
 
     #[test]
